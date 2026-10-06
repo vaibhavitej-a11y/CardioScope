@@ -5,9 +5,14 @@ __pycache__/
 venv/
 *.egg-info/
 
-# data (raw patient data never committed)
+# data
+# ml/data/raw/ ships ONE file on purpose: the public UCI 411 dataset
+# (131 KB, CC BY 4.0 — attribution in README). Committing it means teammates
+# clone and go, with no manual download step.
+# Everything else under raw/ and all of processed/ stays out of git.
 ml/data/raw/*
 !ml/data/raw/.gitkeep
+!ml/data/raw/*.xlsx
 ml/data/processed/*
 !ml/data/processed/.gitkeep
 
