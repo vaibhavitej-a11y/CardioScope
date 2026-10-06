@@ -81,10 +81,10 @@ npm run dev            # → http://localhost:5173
 
 # Terminal 2 — prediction API (Day 1)
 cd api
-.venv\Scripts\activate
+..\.venv\Scripts\activate        # venv lives at the REPO ROOT, not in api/
 uvicorn app.main:app --reload --port 8000    # → http://127.0.0.1:8000/docs
 
-# Terminal 3 — train the model (Day 1)
+# Terminal 3 — train the model (Day 1), from the repo root
 .venv\Scripts\activate
 python ml/src/train.py
 ```
