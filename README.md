@@ -70,22 +70,36 @@ Open **three terminals**, all from the repo root.
 
 | # | Terminal | Command | Folder | Status |
 |---|---|---|---|---|
-| 1 | **Frontend** | `npm run dev` | `web/` | ✅ **works today** (5 Oct) |
-| 2 | **Backend** | `uvicorn app.main:app --reload --port 8000` | `api/` | 🚧 **Day 1** (6 Oct) |
-| 3 | **ML training** | `python ml/src/train.py` | repo root | 🚧 **Day 1** (6 Oct) |
+| 1 | **Frontend** | `npm run dev` | `web/` | ✅ **works today** |
+| 2 | **Backend** | `uvicorn app.main:app --reload --port 8000` | `api/` | 🚧 **Day 2** (7 Oct) |
+| 3 | **ML training** | `python ml/src/train.py` | repo root | ✅ **works today** |
+
+Training takes ~70 s and rewrites `ml/artifacts/`. Verified metrics
+(5-fold stratified CV, seed 42, out-of-fold pooled):
+
+| Target | Model | ROC-AUC | F1 | Precision | Recall | Accuracy |
+|---|---|---|---|---|---|---|
+| Cath (CAD) | CatBoost | **0.912** | 0.900 | 0.887 | 0.912 | 0.855 |
+| LAD | CatBoost | **0.849** | 0.819 | 0.797 | 0.842 | 0.782 |
+| LCX | XGBoost | **0.743** | 0.583 | 0.604 | 0.563 | 0.683 |
+| RCA | CatBoost | **0.703** | 0.507 | 0.558 | 0.465 | 0.660 |
+
+Each model is also evaluated at an inner-CV-selected operating point
+(higher recall for screening); both operating points are recorded in
+`ml/artifacts/metrics.json`. LCX and RCA are the genuinely hard targets
+— that is what the data supports, not a bug.
 
 ```powershell
 # Terminal 1 — frontend (available now)
 cd web
 npm run dev            # → http://localhost:5173
 
-# Terminal 2 — prediction API (Day 1)
+# Terminal 2 — prediction API (Day 2)
 cd api
 ..\.venv\Scripts\activate        # venv lives at the REPO ROOT, not in api/
 uvicorn app.main:app --reload --port 8000    # → http://127.0.0.1:8000/docs
 
-# Terminal 3 — train the model (Day 1), from the repo root
-.venv\Scripts\activate
+# Terminal 3 — train the models (works today), from the repo root
 python ml/src/train.py
 ```
 
@@ -96,9 +110,10 @@ The frontend dev server proxies `/api` to `http://127.0.0.1:8000`
 
 ```powershell
 npm --prefix web run lint      # oxlint
-npm --prefix web run build     # tsc -b && vite build   (verified passing)
+npm --prefix web run build     # tsc -b + vite build   (verified passing)
 npm --prefix web run preview   # serve the production build
-pytest                         # ml + api tests (Day 1+)
+python -m pytest ml/tests      # leakage guard + artifact contract (passing)
+pytest                         # all tests (api tests from Day 2)
 ```
 
 ---

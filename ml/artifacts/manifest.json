@@ -1,0 +1,24 @@
+{
+  "generated_at": "2026-10-06T18:43:55+00:00",
+  "elapsed_seconds": 72.5,
+  "git_commit": "a765ae5",
+  "python": "3.13.14",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "versions": {
+    "numpy": "2.5.1",
+    "pandas": "2.3.3",
+    "scikit-learn": "1.9.0",
+    "lightgbm": "4.7.0",
+    "xgboost": "3.3.0",
+    "catboost": "1.2.10",
+    "shap": "0.52.0",
+    "joblib": "1.5.3"
+  },
+  "dataset_sha256": "739343245c2ba578b541370217531750d8e936022f928b83e0d91756caa3ff0b",
+  "artifacts": [
+    "Cath.joblib",
+    "LAD.joblib",
+    "LCX.joblib",
+    "RCA.joblib"
+  ]
+}
