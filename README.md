@@ -171,7 +171,7 @@ Never commit: anything in `ml/data/processed/`, `.venv/`, `node_modules/`,
 | Port 5173 in use | Vite auto-picks 5174 — read the URL it prints |
 | `npm install` hangs or fails | `npm cache clean --force`, delete `web/node_modules`, retry |
 | Tailwind classes do nothing | you edited the wrong file — `web/src/index.css` must start with `@import "tailwindcss";` |
-| `tsc` errors after a teammate's push | `cd web && npm install` — lockfile probably changed |
+| `tsc` errors after a teammate's push | `cd web`, then `npm install` — lockfile probably changed |
 
 ---
 
