@@ -1,0 +1,23 @@
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# data (raw patient data never committed)
+ml/data/raw/*
+!ml/data/raw/.gitkeep
+ml/data/processed/*
+!ml/data/processed/.gitkeep
+
+# node
+node_modules/
+dist/
+.vite/
+
+# misc
+*.log
+*.mp4
+.DS_Store
+Thumbs.db

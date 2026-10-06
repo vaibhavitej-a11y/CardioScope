@@ -1,0 +1,15 @@
+# ml/ — training pipeline (M1)
+# Dataset: UCI 411, "extention of Z-Alizadeh Sani dataset", doi:10.24432/C5461K (CC BY 4.0)
+#
+# Run:  pip install -r requirements.txt
+
+pandas>=2.3
+numpy>=2.0
+scikit-learn>=1.9
+xgboost>=3.3
+lightgbm>=4.7
+catboost>=1.2.10
+shap>=0.52
+openpyxl>=3.1        # reads the UCI .xlsx
+ucimlrepo>=0.0.7     # fetch_ucirepo(id=411)
+joblib>=1.4

@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+/* ---- design tokens ---------------------------------------------------- */
+@theme {
+  --color-navy: #1f3b57;
+  --color-slate: #5a6b7b;
+  --color-mist: #eef3f7;
+  --color-risk-low: #27ae60;
+  --color-risk-mid: #f39c12;
+  --color-risk-high: #e74c3c;
+  --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+/* Clinical palette is fixed by the spec's colour legend:
+   GREEN = predicted normal · AMBER = uncertain · RED = predicted stenotic.
+   Do not repurpose these for generic success/warning/error states. */
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-navy);
+  background: #f7fafc;
+}
