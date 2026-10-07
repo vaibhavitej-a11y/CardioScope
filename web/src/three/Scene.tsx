@@ -32,9 +32,10 @@ const NEUTRAL = '#9aa7b2'
 /**
  * Heart orientation: anterior tilt (apex swings toward the viewer) and a
  * lateral roll (apex toward the patient's left), matching how a heart sits
- * in the chest rather than an axis-aligned lathe.
+ * in the chest rather than an axis-aligned lathe. Kept deliberately strong —
+ * an upright, axis-aligned organ reads as a diagram, not a body part.
  */
-const HEART_TILT: [number, number, number] = [-0.18, 0, 0.16]
+const HEART_TILT: [number, number, number] = [-0.26, 0.12, 0.24]
 
 function mapVessels<T>(fn: (vessel: VesselId) => T): Record<VesselId, T> {
   return Object.fromEntries(
@@ -97,16 +98,22 @@ export function Scene({ labelPortal }: SceneProps) {
   return (
     <Canvas
       dpr={[1, 1.75]}
-      camera={{ position: [0.1, 0.3, 4.4], fov: 42, near: 0.1, far: 40 }}
+      camera={{ position: [0.1, 0.3, 3.8], fov: 42, near: 0.1, far: 40 }}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
       performance={{ min: 0.5, max: 1 }}
       onPointerMissed={() => selectVessel(null)}
     >
       <color attach="background" args={['#eef3f7']} />
 
-      <ambientLight intensity={0.85} />
-      <directionalLight position={[3, 4, 5]} intensity={1.2} />
-      <directionalLight position={[-4, 1, -3]} intensity={0.4} />
+      {/*
+        Key + fill + rim, with a deliberately low ambient term: high ambient
+        light flattens the shading, which is exactly what made the first
+        procedural cut look like a smooth blob instead of a solid organ.
+      */}
+      <ambientLight intensity={0.45} />
+      <directionalLight position={[4.5, 3, 2.5]} intensity={1.35} />
+      <directionalLight position={[-4, 1, -3]} intensity={0.5} />
+      <directionalLight position={[-2, 3, -5]} intensity={0.65} />
 
       <group rotation={HEART_TILT}>
         <Heart />

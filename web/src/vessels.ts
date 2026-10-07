@@ -118,29 +118,50 @@ export function riskLabel(band: RiskBand): string {
 /* ------------------------------------------------------------- heart shape */
 
 /**
- * Lathe profile of the procedural ventricular mass: [radius, y], ordered
- * from the base (top) down to the apex (bottom). Radius 0 at both ends gives
- * closed poles, so the mesh needs no separate cap.
+ * Lathe profile of the procedural heart: [radius, y], ordered from the base
+ * (top) down to the apex (bottom). Radius 0 at both ends gives closed poles,
+ * so the mesh needs no separate cap.
  *
- * Roughly as wide as it is tall (max radius 0.83 over a 2.0 span) with a
- * short, rounded apex — the first cut was tall and pointed and read as a
- * cone rather than a heart.
+/**
+ * Radius of the heart at a given height.
+ *
+ * An analytic curve rather than a table of control points: a lathe over
+ * piecewise-linear rows puts a visible crease at every row, and with the
+ * atrial lobes multiplying the base the crease at the shoulder read as a hard
+ * brim. Sampling this function is smooth everywhere by construction.
+ *
+ * The shape is a spheroid stretched fuller toward the base and drawn out to a
+ * point at the apex — widest just above the middle, which is where a heart's
+ * ventricular mass actually is.
+ *
+ * @param y HEART_BOTTOM..HEART_TOP
  */
-export const HEART_PROFILE: readonly (readonly [number, number])[] = [
-  [0.0, 1.0],
-  [0.2, 0.98],
-  [0.4, 0.93],
-  [0.6, 0.84],
-  [0.75, 0.68],
-  [0.82, 0.45],
-  [0.83, 0.2],
-  [0.78, -0.05],
-  [0.68, -0.3],
-  [0.55, -0.55],
-  [0.4, -0.76],
-  [0.22, -0.92],
-  [0.0, -1.0],
-]
+export function profileRadius(y: number): number {
+  const yy = Math.min(1, Math.max(-1, y))
+  const width = 1 - yy * yy
+  if (width <= 0) return 0
+  return 0.8 * Math.sqrt(width) * (1 + 0.35 * yy)
+}
+
+/**
+ * Even samples of profileRadius, ready to hand to a LatheGeometry.
+ *
+ * Ordered bottom-to-top on purpose. LatheGeometry derives its triangle
+ * winding from the direction the profile is traversed, so walking it from the
+ * apex up to the base is what gives the mesh outward-facing normals. Walking
+ * it the other way culls the anterior wall outright: the scene then shows the
+ * far wall and every artery that should be hidden behind the heart — the
+ * posterior RCA, in particular — reads as a stray orange stripe drawn across
+ * the front of the muscle.
+ */
+export function profileSamples(steps = 64): (readonly [number, number])[] {
+  const out: (readonly [number, number])[] = []
+  for (let i = 0; i <= steps; i++) {
+    const y = HEART_BOTTOM + ((HEART_TOP - HEART_BOTTOM) * i) / steps
+    out.push([profileRadius(y), y])
+  }
+  return out
+}
 
 /** Base of the heart (top). */
 export const HEART_TOP = 1.0
@@ -158,20 +179,74 @@ export function apexOffset(y: number): readonly [number, number] {
   return [0.2 * s, 0.14 * s]
 }
 
-function radiusAt(y: number): number {
-  const p = HEART_PROFILE
-  const yy = Math.min(HEART_TOP, Math.max(HEART_BOTTOM, y))
-  for (let i = 1; i < p.length; i++) {
-    const [r0, y0] = p[i - 1]
-    const [r1, y1] = p[i]
-    // profile is ordered top-down, so y1 <= y0
-    if (yy <= y0 && yy >= y1) {
-      const span = y0 - y1
-      const t = span === 0 ? 0 : (y0 - yy) / span
-      return r0 + (r1 - r0) * t
-    }
-  }
-  return 0
+/** Front-to-back flattening — cross-sections are ellipses, not circles. */
+const DEPTH = 0.86
+/** Azimuth of the anterior interventricular groove, where LAD runs. */
+const ANTERIOR = Math.PI / 2
+
+function smoothstep(edge0: number, edge1: number, x: number): number {
+  const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)))
+  return t * t * (3 - 2 * t)
+}
+
+/** Shortest signed angle between `a` and the target, in (-PI, PI]. */
+function shortestAngle(a: number): number {
+  return Math.atan2(Math.sin(a), Math.cos(a))
+}
+
+/**
+ * The one definition of the heart's shape.
+ *
+ * Heart.tsx feeds it every lathe vertex and surfacePoint() feeds it every
+ * coronary control point, so the arteries stay welded to the muscle however
+ * the silhouette is sculpted — editing one without the other makes the tubes
+ * float off (or sink into) the myocardium.
+ *
+ * @param r0   radius on the revolved profile, before any lift
+ * @param y    height, HEART_BOTTOM..HEART_TOP
+ * @param phi  azimuth; 0 = patient's left, PI/2 = anterior, PI = patient's right
+ * @param lift 1.0 sits on the mesh; vessels pass >1 so their tube radius does
+ *             not half-sink into the myocardium
+ */
+export function warpPoint(
+  r0: number,
+  y: number,
+  phi: number,
+  lift = 1,
+): [number, number, number] {
+  let r = r0 * lift
+
+  // Paired atrial lobes at the base, at the patient's left and right. A lathe
+  // is rotationally symmetric, so this is the only place the crown can be
+  // made. cos(2*phi) is allowed to go negative: it pulls the base in at the
+  // front and back so the lobes read as two distinct bumps on the silhouette
+  // instead of one flared ring — a flared ring is what looked like a cup.
+  const atria = 0.42 * smoothstep(0.45, 0.92, y) * Math.cos(2 * phi)
+  r *= 1 + atria
+
+  // Atrioventricular (coronary) sulcus — the waist between the atrial crown
+  // and the ventricular mass, and the channel RCA and LCX actually run in.
+  // Without it the muscle is a single unbroken dome, which is precisely what
+  // made every earlier iteration read as a pear rather than a heart.
+  const sulcus = 0.06 * Math.exp(-((y - 0.74) * (y - 0.74)) / (2 * 0.14 * 0.14))
+  r *= 1 - sulcus
+
+  // Ventricular asymmetry: the left ventricle is the bulk of the muscle and
+  // bulges toward the patient's left, while the right side stays flatter.
+  // A lathe is symmetric by construction, so conical leaning has to be
+  // reintroduced here — it is what turns an egg into a heart.
+  const ventricle = 0.1 * smoothstep(0.7, -0.1, y)
+  r *= 1 + ventricle * Math.cos(phi)
+
+  // Anterior interventricular groove — a shallow channel the LAD seats into.
+  // Opens just below the base and fades out short of the apex.
+  const groove =
+    0.2 * smoothstep(0.8, 0.55, y) * smoothstep(-0.95, -0.7, y)
+  const foreAft = shortestAngle(phi - ANTERIOR)
+  r *= 1 - groove * Math.exp(-(foreAft * foreAft) / (2 * 0.34 * 0.34))
+
+  const [ox, oz] = apexOffset(y)
+  return [r * Math.cos(phi) * 0.95 + ox, y, r * Math.sin(phi) * DEPTH * 0.95 + oz]
 }
 
 /**
@@ -188,9 +263,7 @@ export function surfacePoint(
   phi: number,
   lift = 1.06,
 ): [number, number, number] {
-  const r = radiusAt(y) * lift
-  const [ox, oz] = apexOffset(y)
-  return [r * Math.cos(phi) * 0.95 + ox, y, r * Math.sin(phi) * 0.95 + oz]
+  return warpPoint(profileRadius(y), y, phi, lift)
 }
 
 /* ---------------------------------------------------------- vessel routes */

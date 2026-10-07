@@ -6,14 +6,14 @@
  * dependency. Nothing here needs a downloaded asset, so the app runs
  * offline with no network fetch.
  *
- * Geometry is a LatheGeometry over HEART_PROFILE (from ../vessels), then
- * warped by apexOffset() — the identical warp surfacePoint() uses to place
- * the coronary arteries, so the vessels hug the muscle by construction.
+ * Geometry is a LatheGeometry sampled from profileRadius() (in ../vessels),
+ * then handed to warpPoint() — the identical function surfacePoint() uses to
+ * place the coronary arteries, so the vessels hug the muscle by construction.
  */
 
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import { GREAT_VESSELS, HEART_PROFILE, apexOffset } from '../vessels'
+import { GREAT_VESSELS, profileSamples, warpPoint } from '../vessels'
 
 /** Myocardium. Deliberately NOT a risk colour — green/amber/red are reserved. */
 const MUSCLE = '#a16259'
@@ -22,15 +22,17 @@ const GREAT_VESSEL_COLOR = '#8fa3b5'
 
 export function Heart() {
   const geometry = useMemo(() => {
-    const profile = HEART_PROFILE.map(([r, y]) => new THREE.Vector2(r, y))
-    const mesh = new THREE.LatheGeometry(profile, 56)
+    const profile = profileSamples(72).map(
+      ([r, y]) => new THREE.Vector2(r, y),
+    )
+    const mesh = new THREE.LatheGeometry(profile, 72)
     const position = mesh.attributes.position
     for (let i = 0; i < position.count; i++) {
       const x = position.getX(i)
       const y = position.getY(i)
       const z = position.getZ(i)
-      const [ox, oz] = apexOffset(y)
-      position.setXYZ(i, x * 0.95 + ox, y, z * 0.95 + oz)
+      const [wx, wy, wz] = warpPoint(Math.hypot(x, z), y, Math.atan2(z, x))
+      position.setXYZ(i, wx, wy, wz)
     }
     position.needsUpdate = true
     mesh.computeVertexNormals()
@@ -44,8 +46,8 @@ export function Heart() {
       <mesh geometry={geometry}>
         <meshStandardMaterial
           color={MUSCLE}
-          roughness={0.78}
-          metalness={0.02}
+          roughness={0.62}
+          metalness={0.04}
         />
       </mesh>
       <GreatVessels />
