@@ -1,12 +1,10 @@
 /**
- * Overall CAD status + the three vessel probabilities, always visible beside
- * the 3D canvas — requirement 3a.
+ * Requirement 3a: overall CAD status and the three vessel-specific
+ * probabilities, always visible beside the 3D canvas.
  *
- * STUB: this is the §2c/§3a readout so the scene is demoable on its own.
- * M4 replaces it with the full CdbBadge + GaugeCard set; the store shape and
- * the colour mapping are the contract, not this layout.
- *
- * TODO(M4): expand into components/CdbBadge.tsx and components/GaugeCard.tsx.
+ * Composition only — the reading itself lives in CdbBadge (overall) and
+ * GaugeCard (per vessel), which is what the traceability doc names as the
+ * §3a components.
  */
 
 import {
@@ -15,78 +13,10 @@ import {
   useVesselSelector,
 } from '../store/patientStore'
 import type { VesselId } from '../api/types'
-import {
-  VESSELS,
-  VESSEL_META,
-  riskBand,
-  riskColor,
-  riskLabel,
-} from '../vessels'
-
-const NEUTRAL = '#9aa7b2'
-
-function formatPct(value: number): string {
-  return `${Math.round(value * 100)}%`
-}
-
-interface CardProps {
-  title: string
-  subtitle?: string
-  value: number | null
-  active: boolean
-  onClick?: () => void
-}
-
-function ProbabilityCard({
-  title,
-  subtitle,
-  value,
-  active,
-  onClick,
-}: CardProps) {
-  const color = value === null ? NEUTRAL : riskColor(value)
-  const label = value === null ? '—' : riskLabel(riskBand(value))
-
-  const body = (
-    <>
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="text-xs font-semibold text-navy">{title}</span>
-        <span className="text-base font-bold tabular-nums text-navy">
-          {value === null ? '—' : formatPct(value)}
-        </span>
-      </div>
-      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-mist">
-        <div
-          className="h-full rounded-full transition-[width] duration-500"
-          style={{
-            width: value === null ? '0%' : formatPct(value),
-            backgroundColor: color,
-          }}
-        />
-      </div>
-      <div className="mt-1 text-[10px] font-medium text-slate">
-        {subtitle ? `${subtitle} · ` : ''}
-        {label}
-      </div>
-    </>
-  )
-
-  const className = [
-    'rounded-lg border bg-white p-2.5 text-left transition',
-    active
-      ? 'border-navy ring-1 ring-navy/25'
-      : 'border-mist hover:border-navy/40',
-  ].join(' ')
-
-  if (!onClick) {
-    return <div className={className}>{body}</div>
-  }
-  return (
-    <button type="button" onClick={onClick} className={className}>
-      {body}
-    </button>
-  )
-}
+import { USE_MOCK } from '../api/client'
+import { VESSELS, VESSEL_META } from '../vessels'
+import { CdbBadge } from './CdbBadge'
+import { GaugeCard } from './GaugeCard'
 
 export function RiskStrip() {
   const prediction = usePrediction()
@@ -94,36 +24,41 @@ export function RiskStrip() {
   const error = usePatientStore((s) => s.error)
   const { selectedVessel, selectVessel } = useVesselSelector()
 
-  const cad = prediction?.cad ?? null
   const toggle = (vessel: VesselId) =>
     selectVessel(selectedVessel === vessel ? null : vessel)
 
   return (
-    <section aria-label="Predicted risk" className="grid grid-cols-2 gap-2">
-      <ProbabilityCard title="CAD (overall)" value={cad} active={false} />
+    <section aria-label="Predicted risk" className="space-y-2">
+      <CdbBadge value={prediction?.cad ?? null} />
 
-      {VESSELS.map((vessel) => (
-        <ProbabilityCard
-          key={vessel}
-          title={vessel}
-          subtitle="predicted stenosis"
-          value={prediction?.vessels[vessel] ?? null}
-          active={selectedVessel === vessel}
-          onClick={() => toggle(vessel)}
-        />
-      ))}
+      <div className="grid grid-cols-3 gap-2">
+        {VESSELS.map((vessel) => (
+          <GaugeCard
+            key={vessel}
+            title={vessel}
+            subtitle="predicted stenosis"
+            value={prediction?.vessels[vessel] ?? null}
+            active={selectedVessel === vessel}
+            onClick={() => toggle(vessel)}
+          />
+        ))}
+      </div>
 
       {status === 'loading' && prediction === null && (
-        <p className="col-span-2 text-[11px] text-slate">
-          Running prediction…
-        </p>
+        <p className="text-[11px] text-slate">Running prediction…</p>
       )}
       {status === 'error' && (
-        <p className="col-span-2 text-[11px] text-risk-high">{error}</p>
+        <p className="text-[11px] text-risk-high">{error}</p>
       )}
-      <p className="col-span-2 text-[10px] text-slate">
+
+      <p className="text-[10px] leading-relaxed text-slate">
         Values are model predictions, not measurements.{' '}
         {VESSELS.map((v) => VESSEL_META[v].name).join(' · ')}.
+        {USE_MOCK && (
+          <span className="ml-1 rounded bg-mist px-1 py-0.5 font-semibold text-slate">
+            demo data — model service not connected
+          </span>
+        )}
       </p>
     </section>
   )

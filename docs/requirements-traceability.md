@@ -22,11 +22,11 @@ Nothing may be marked done until the linked gate is green.
 
 | Req | Requirement | Component | Owner | Status |
 |---|---|---|---|---|
-| 1a | Train classification models to predict overall **CAD** status | `ml/src/train.py` | M1 | ⬜ not started |
-| 1b | Predict stenosis status for **LAD, LCX, RCA** | `ml/src/train.py` | M1 | ⬜ not started |
-| 1c | Use demographic, clinical examination, ECG, laboratory and echocardiographic features | `ml/src/clean.py` | M1 | ⬜ not started |
-| 1d | **Exclude `LAD`, `LCX`, `RCA`, `Cath` from model input features** to prevent target leakage | `ml/tests/test_leakage.py` | M1 | ⬜ not started |
-| 1e | Evaluate with accuracy, precision, recall, F1-score, ROC-AUC | `ml/src/evaluate.py` | M1 | ⬜ not started |
+| 1a | Train classification models to predict overall **CAD** status | `ml/src/train.py` | M1 | ✅ done + gate green |
+| 1b | Predict stenosis status for **LAD, LCX, RCA** | `ml/src/train.py` | M1 | ✅ done + gate green |
+| 1c | Use demographic, clinical examination, ECG, laboratory and echocardiographic features | `ml/src/clean.py` | M1 | ✅ done + gate green |
+| 1d | **Exclude `LAD`, `LCX`, `RCA`, `Cath` from model input features** to prevent target leakage | `ml/tests/test_leakage.py` | M1 | ✅ done + gate green |
+| 1e | Evaluate with accuracy, precision, recall, F1-score, ROC-AUC | `ml/src/evaluate.py` | M1 | ✅ done + gate green |
 
 > **1d is the one judges are told to ask about.** UCI's own dataset note says
 > the same thing: *"only one of the LAD, LCX, RCA or Cath must be in dataset
@@ -38,9 +38,9 @@ Nothing may be marked done until the linked gate is green.
 
 | Req | Requirement | Component | Owner | Status |
 |---|---|---|---|---|
-| 2a | Render an interactive 3D human **torso/heart** model (Three.js, WebGL, React Three Fiber **or** VTK.js) | `web/src/three/Scene.tsx` | M3 | ⬜ not started |
-| 2b | Dynamically colour-code individual **coronary artery nodes** (LAD, LCX, RCA) by predicted stenosis probability | `web/src/three/VesselTube.tsx` + `VesselNode.tsx` | M3 | ⬜ not started |
-| 2c | Allow users to **rotate, zoom and select anatomical regions** to inspect localized/vessel-specific risk detail | `web/src/three/Scene.tsx` + `components/VesselDetailPanel.tsx` | M3 + M4 | ⬜ not started |
+| 2a | Render an interactive 3D human **torso/heart** model (Three.js, WebGL, React Three Fiber **or** VTK.js) | `web/src/three/Scene.tsx` | M3 | ✅ done + gate green |
+| 2b | Dynamically colour-code individual **coronary artery nodes** (LAD, LCX, RCA) by predicted stenosis probability | `web/src/three/VesselTube.tsx` + `VesselNode.tsx` | M3 | ✅ done + gate green |
+| 2c | Allow users to **rotate, zoom and select anatomical regions** to inspect localized/vessel-specific risk detail | `web/src/three/Scene.tsx` + `components/VesselDetailPanel.tsx` | M3 + M4 | ✅ done + gate green |
 
 > Spec allows **permissive choice of tech** (2a) and explicitly permits
 > open-source meshes in Requirement 4 — meshes are optional, not required.
@@ -49,9 +49,9 @@ Nothing may be marked done until the linked gate is green.
 
 | Req | Requirement | Component | Owner | Status |
 |---|---|---|---|---|
-| 3a | Display predicted overall **CAD status** and vessel-specific probabilities **alongside** the 3D canvas | `components/CdbBadge.tsx`, `components/GaugeCard.tsx` | M4 | ⬜ not started |
-| 3b | Interpretable breakdown of **why** the model predicted a risk score (SHAP **or** LIME) | `components/ShapWaterfall.tsx` | M4 | ⬜ not started |
-| 3c | Display physiological measurements **alongside their relative contribution** to the overall prediction | `components/FeatureContribution.tsx` | M4 | ⬜ not started |
+| 3a | Display predicted overall **CAD status** and vessel-specific probabilities **alongside** the 3D canvas | `components/CdbBadge.tsx`, `components/GaugeCard.tsx` | M4 | ✅ done + gate green |
+| 3b | Interpretable breakdown of **why** the model predicted a risk score (SHAP **or** LIME) | `components/ShapWaterfall.tsx` | M4 | ✅ done + gate green |
+| 3c | Display physiological measurements **alongside their relative contribution** to the overall prediction | `components/FeatureContribution.tsx` | M4 | ✅ done + gate green |
 
 ## 4. 3D models
 
@@ -65,7 +65,7 @@ Nothing may be marked done until the linked gate is green.
 
 | Req | Requirement | Component | Owner | Status |
 |---|---|---|---|---|
-| 5 | UI must show **clear, visible** disclaimers that predictions are for decision support / educational purposes only and are **not a substitute for formal diagnostic imaging** | `components/DisclaimerBanner.tsx`, `DisclaimerModal.tsx`, page footer · text source `api/app/constants.py` | M4 render · M2 source | ⬜ not started |
+| 5 | UI must show **clear, visible** disclaimers that predictions are for decision support / educational purposes only and are **not a substitute for formal diagnostic imaging** | `components/DisclaimerBanner.tsx`, `DisclaimerModal.tsx`, page footer · text source `api/app/constants.py` | M4 render · M2 source | ✅ done + gate green |
 
 > Placed in **banner + footer + startup modal** so it cannot be missed.
 
@@ -75,9 +75,9 @@ Nothing may be marked done until the linked gate is green.
 
 | # | Deliverable | Requirement | Component / owner | Status |
 |---|---|---|---|---|
-| D-1 | **Working software prototype** — web app with interactive 3D viewer integrated with the ML backend | whole system | M1–M4 | ⬜ |
-| D-2 | **Trained prediction pipeline** — clean code + model weights for cardiac risk and multi-vessel stenosis classification | §1 | `ml/` · M1 | ⬜ |
-| D-3 | **Clinical explanation dashboard** — prediction metrics, SHAP/LIME importances, physiological breakdowns | §3 | `web/src/components/` · M4 | ⬜ |
+| D-1 | **Working software prototype** — web app with interactive 3D viewer integrated with the ML backend | whole system | M1–M4 | 🟡 in progress |
+| D-2 | **Trained prediction pipeline** — clean code + model weights for cardiac risk and multi-vessel stenosis classification | §1 | `ml/` · M1 | ✅ done + gate green |
+| D-3 | **Clinical explanation dashboard** — prediction metrics, SHAP/LIME importances, physiological breakdowns | §3 | `web/src/components/` · M4 | 🟡 in progress |
 | D-4 | **Project documentation, max 6 pages** — preprocessing, model architecture, 3D pipeline setup, usage instructions, evaluation results | deliverable | `docs/submission/index.md` · M4 | ⬜ |
 | D-5 | **Demonstration video, 3–10 minutes on YouTube** — working system, feature input workflow, 3D interactions, technical implementation | deliverable + Devpost rule | `docs/demo/` · M4 | ⬜ |
 
@@ -87,9 +87,9 @@ Nothing may be marked done until the linked gate is green.
 
 | Consideration | Component | Owner | Status |
 |---|---|---|---|
-| Responsive 3D in modern browsers **without a dedicated GPU** | `three/Scene.tsx` — low poly count, no post-processing | M3 | ⬜ |
-| Architecture must allow adding clinical features, prediction models or anatomical structures **without a complete redesign** | `api/` route + model registry · `ml/` one pipeline per target · `web/` data-driven form | M2, M1, M4 | ⬜ |
-| **Consistent correspondence** between model outputs and the displayed LAD/LCX/RCA structures | shared vessel constants (`LAD`/`LCX`/`RCA`) used by API, store and 3D layer | M3 + M4 | ⬜ |
+| Responsive 3D in modern browsers **without a dedicated GPU** | `three/Scene.tsx` — low poly count, no post-processing | M3 | 🟡 in progress |
+| Architecture must allow adding clinical features, prediction models or anatomical structures **without a complete redesign** | `api/` route + model registry · `ml/` one pipeline per target · `web/` data-driven form | M2, M1, M4 | 🟡 in progress |
+| **Consistent correspondence** between model outputs and the displayed LAD/LCX/RCA structures | shared vessel constants (`LAD`/`LCX`/`RCA`) used by API, store and 3D layer | M3 + M4 | 🟡 in progress |
 
 ---
 

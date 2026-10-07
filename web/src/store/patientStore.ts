@@ -87,6 +87,16 @@ export function useSelectedVessel(): VesselId | null {
 }
 
 /**
+ * Which SHAP breakdown the interpretation panels (requirements 3b/3c) show:
+ * the vessel selected in the 3D scene, or the overall CAD prediction when
+ * nothing is selected. One selector shared by ShapWaterfall and
+ * FeatureContribution so the two panels can never disagree about scope.
+ */
+export function useShapScope(): 'cad' | VesselId {
+  return usePatientStore((s) => s.selectedVessel ?? 'cad')
+}
+
+/**
  * Two subscriptions folded into one stable object. The memo matters: a
  * selector returning a fresh object every call defeats zustand v5's Object.is
  * check and re-renders (or loops) the Canvas on every notification.

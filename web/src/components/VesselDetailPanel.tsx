@@ -7,8 +7,9 @@
  * location (Region RWMA is a label, not a coordinate), so finer granularity
  * would be inventing detail we must not claim. See decision D4.
  *
- * TODO(M4): the full §3b/§3c panels (ShapWaterfall, FeatureContribution)
- * still to come — this shows the top contributors for the selected vessel.
+ * The full §3b/§3c panels live in components/ShapWaterfall.tsx and
+ * components/FeatureContribution.tsx below this one; this panel keeps the
+ * vessel-scoped top contributors for the 2c selection story.
  */
 
 import { usePrediction, useVesselSelector } from '../store/patientStore'
