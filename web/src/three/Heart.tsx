@@ -13,10 +13,20 @@
 
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import { AURICLES, GREAT_VESSELS, profileSamples, warpPoint } from '../vessels'
+import {
+  AURICLES,
+  GREAT_VESSELS,
+  profileSamples,
+  surfacePoint,
+  warpPoint,
+} from '../vessels'
 
 /** Myocardium. Deliberately NOT a risk colour — green/amber/red are reserved. */
 const MUSCLE = '#a16259'
+/** Atrioventricular groove — darker muscle sitting in the sulcus warp. */
+const SULCUS = '#7c443c'
+/** Height of the coronary sulcus dip in warpPoint(); must match it exactly. */
+const SULCUS_Y = 0.74
 
 export function Heart() {
   const geometry = useMemo(() => {
@@ -49,15 +59,46 @@ export function Heart() {
   return (
     <group>
       <mesh geometry={geometry}>
-        <meshStandardMaterial
+        <meshPhysicalMaterial
           color={MUSCLE}
           roughness={0.62}
           metalness={0.04}
+          clearcoat={0.35}
+          clearcoatRoughness={0.6}
         />
       </mesh>
+      <CoronarySulcus />
       <Auricles />
       <GreatVessels />
     </group>
+  )
+}
+
+/**
+ * Atrioventricular groove — the "waist" of the heart, and the channel the
+ * RCA and LCX run through. warpPoint() already dips the surface here; this
+ * dark band sits half-sunk in that dip so the atria read as a separate mass
+ * above the ventricles instead of one continuous dome.
+ */
+function CoronarySulcus() {
+  const geometry = useMemo(() => {
+    const points: THREE.Vector3[] = []
+    const steps = 96
+    for (let i = 0; i < steps; i++) {
+      const phi = (i / steps) * Math.PI * 2
+      const [x, y, z] = surfacePoint(SULCUS_Y, phi, 1.005)
+      points.push(new THREE.Vector3(x, y, z))
+    }
+    const curve = new THREE.CatmullRomCurve3(points, true, 'catmullrom', 0.5)
+    return new THREE.TubeGeometry(curve, 192, 0.032, 8, true)
+  }, [])
+
+  useEffect(() => () => geometry.dispose(), [geometry])
+
+  return (
+    <mesh geometry={geometry}>
+      <meshStandardMaterial color={SULCUS} roughness={0.72} metalness={0.04} />
+    </mesh>
   )
 }
 
@@ -76,10 +117,12 @@ function Auricles() {
           scale={auricle.scale as [number, number, number]}
         >
           <sphereGeometry args={[1, 28, 20]} />
-          <meshStandardMaterial
+          <meshPhysicalMaterial
             color={MUSCLE}
             roughness={0.66}
             metalness={0.04}
+            clearcoat={0.35}
+            clearcoatRoughness={0.6}
           />
         </mesh>
       ))}
@@ -109,10 +152,12 @@ function GreatVessels() {
       {GREAT_VESSELS.map((vessel, i) => (
         <group key={vessel.name}>
           <mesh geometry={geometries[i]}>
-            <meshStandardMaterial
+            <meshPhysicalMaterial
               color={vessel.color}
-              roughness={0.6}
+              roughness={0.55}
               metalness={0.05}
+              clearcoat={0.5}
+              clearcoatRoughness={0.35}
             />
           </mesh>
           {/*
@@ -127,10 +172,12 @@ function GreatVessels() {
                 position={point as [number, number, number]}
               >
                 <sphereGeometry args={[vessel.radius, 16, 12]} />
-                <meshStandardMaterial
+                <meshPhysicalMaterial
                   color={vessel.color}
-                  roughness={0.6}
+                  roughness={0.55}
                   metalness={0.05}
+                  clearcoat={0.5}
+                  clearcoatRoughness={0.35}
                 />
               </mesh>
             ),

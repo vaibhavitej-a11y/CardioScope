@@ -1,15 +1,17 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './index.css'
 import { getPrediction } from './api/client'
 import { collectInputs, defaultInputs } from './api/features'
 import { DisclaimerBanner, DISCLAIMER_TEXT } from './components/DisclaimerBanner'
 import { DisclaimerModal } from './components/DisclaimerModal'
 import { FeatureContribution } from './components/FeatureContribution'
+import { HeartSoundToggle } from './components/HeartSoundToggle'
 import { PatientForm } from './components/PatientForm'
 import { RiskStrip } from './components/RiskStrip'
 import { ShapWaterfall } from './components/ShapWaterfall'
 import { VesselDetailPanel } from './components/VesselDetailPanel'
 import { usePatientStore } from './store/patientStore'
+import type { ViewCommand, ViewName } from './three/Scene'
 import { Scene } from './three/Scene'
 
 /**
@@ -40,6 +42,11 @@ function App() {
    * exactly once.
    */
   const labelPortal = useRef<HTMLDivElement | null>(null)
+
+  /** Latest camera-preset request for the 3D scene (nonce re-fires repeats). */
+  const [view, setView] = useState<ViewCommand | null>(null)
+  const showView = (name: ViewName) =>
+    setView((previous) => ({ name, nonce: (previous?.nonce ?? 0) + 1 }))
 
   useEffect(() => {
     let cancelled = false
@@ -81,7 +88,32 @@ function App() {
             aria-hidden
             className="pointer-events-none absolute inset-0 z-10"
           />
-          <Scene labelPortal={labelPortal} />
+          <Scene labelPortal={labelPortal} view={view} />
+
+          <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2">
+            <div
+              role="group"
+              aria-label="Camera view"
+              className="flex rounded-full border border-mist bg-white/95 p-1 shadow-sm backdrop-blur"
+            >
+              {(['anterior', 'posterior'] as const).map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => showView(name)}
+                  aria-pressed={view?.name === name}
+                  className={`rounded-full px-3 py-1 text-[11px] font-medium capitalize transition ${
+                    view?.name === name
+                      ? 'bg-navy text-white'
+                      : 'text-slate hover:text-navy'
+                  }`}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+            <HeartSoundToggle />
+          </div>
         </div>
 
         <aside className="w-full shrink-0 space-y-3 overflow-y-auto lg:w-[21rem]">
