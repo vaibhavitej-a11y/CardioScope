@@ -64,7 +64,13 @@ ARTIFACTS = Path(__file__).resolve().parents[1] / "artifacts"
 METRICS = ("accuracy", "precision", "recall", "f1", "roc_auc")
 TREE_MODELS = ("lightgbm", "xgboost", "catboost")
 BASELINE = "logreg"
-TREE_CANDIDATES = TREE_MODELS  # what selection is allowed to pick
+
+# Every tree model is trained and reported, but SELECTION is restricted to
+# those that can explain themselves in probability units — requirement 3b
+# (SHAP) plus the rubric's "consistent correspondence between model outputs
+# and the displayed LAD, LCX, RCA anatomical structures". The pool is
+# discovered by probe_shap_capability(), not hard-coded, because it depends
+# on the installed shap / booster versions; main() passes it down explicitly.
 
 
 # --------------------------------------------------------------- helpers --
@@ -244,7 +250,11 @@ def agg(rows: list[dict[str, float]]) -> dict[str, dict[str, float]]:
 
 # ------------------------------------------------------------ one target --
 def train_target(
-    X: pd.DataFrame, y: pd.Series, target: str, verbose: bool = True
+    X: pd.DataFrame,
+    y: pd.Series,
+    target: str,
+    selection_pool: tuple[str, ...],
+    verbose: bool = True,
 ) -> dict:
     cv = StratifiedKFold(n_splits=N_SPLITS, shuffle=True, random_state=SEED)
     fold_scores: dict[str, list[dict[str, float]]] = {}
@@ -270,7 +280,7 @@ def train_target(
 
     # selection: best mean ROC-AUC among the deployable tree models
     selected = max(
-        TREE_CANDIDATES, key=lambda n: candidates[n]["roc_auc"]["mean"]
+        selection_pool, key=lambda n: candidates[n]["roc_auc"]["mean"]
     )
 
     # --- operating point for the shipped model --------------------------
@@ -316,7 +326,12 @@ def train_target(
         print(f"\n  {target}")
         for name in (*TREE_MODELS, BASELINE):
             c = candidates[name]
-            star = "  <== SELECTED" if name == selected else ""
+            if name == selected:
+                star = "  <== SELECTED"
+            elif name in selection_pool or name not in TREE_MODELS:
+                star = ""
+            else:
+                star = "  (excluded: no probability-scale SHAP)"
             print(
                 f"    {name:9} roc_auc={c['roc_auc']['mean']:.3f}"
                 f"+-{c['roc_auc']['std']:.3f}"
@@ -359,6 +374,41 @@ def _normalise(sv, n_features: int) -> np.ndarray:
     if sv.ndim != 2 or sv.shape[1] != n_features:
         raise ValueError(f"unexpected SHAP shape {sv.shape}")
     return sv
+
+
+def probe_shap_capability(X: pd.DataFrame, y: pd.Series) -> dict[str, bool]:
+    """Which tree models can express SHAP contributions in probability units.
+
+    Requirement 3b asks for SHAP, and requirement 3 (technical) asks for a
+    consistent correspondence between model outputs and the displayed
+    vessels. Contributions on different scales across targets would make the
+    dashboard silently misleading — e.g. raw/log-odds magnitudes here run
+    ~18x larger than probability ones (2784 vs 158 for the same data).
+
+    XGBoost raises NotImplementedError ("Categorical split is not yet
+    supported") for interventional+probability mode, so it cannot be a
+    selection candidate on this build. Probing at runtime keeps the pool
+    honest if the installed shap/booster versions change.
+    """
+    capability: dict[str, bool] = {}
+    for name in TREE_MODELS:
+        try:
+            pipe = build_models(y)[name]
+            pipe.fit(X, y)
+            clf = pipe.named_steps["clf"]
+            Xt = pipe.named_steps["prep"].transform(X)
+            bg = shap.sample(Xt, min(50, len(Xt)), random_state=SEED)
+            explainer = shap.TreeExplainer(
+                clf,
+                data=bg,
+                model_output="probability",
+                feature_perturbation="interventional",
+            )
+            _normalise(explainer.shap_values(Xt), Xt.shape[1])
+            capability[name] = True
+        except Exception:
+            capability[name] = False
+    return capability
 
 
 def build_shap(pipe: Pipeline, X: pd.DataFrame) -> tuple[object | None, dict]:
@@ -455,9 +505,24 @@ def main() -> int:
           f"({len(num_cols)} numeric, {len(cat_cols)} categorical)")
     print(f"targets {D.TARGETS}   seed {SEED}   {N_SPLITS}-fold stratified CV")
 
+    # Which models can be explained in probability units? (requirement 3b)
+    capability = probe_shap_capability(X, y[D.TARGETS[0]])
+    selection_pool = tuple(n for n in TREE_MODELS if capability[n])
+    if not selection_pool:
+        raise SystemExit("FATAL: no tree model supports probability-scale SHAP")
+    excluded = [n for n in TREE_MODELS if not capability[n]]
+    cap_txt = "  ".join(
+        "{}={}".format(k, "YES" if v else "NO")
+        for k, v in capability.items()
+    )
+    print(f"SHAP probability-scale capability: {cap_txt}")
+    if excluded:
+        print(f"excluded from selection: {', '.join(excluded)} "
+              f"(cannot express SHAP contributions in probability units)")
+
     results, shap_reports = {}, {}
     for target in D.TARGETS:
-        res = train_target(X, y[target], target)
+        res = train_target(X, y[target], target, selection_pool)
         print(f"    -> SHAP ...", end="", flush=True)
         explainer, report = build_shap(res["pipeline"], X)
         print(f" {report['shap_mode']}  "
@@ -495,7 +560,9 @@ def main() -> int:
         "cv_strategy": "StratifiedKFold(n_splits=5, shuffle=True)",
         "n_rows": int(len(X)),
         "selection_metric": "roc_auc",
-        "selection_pool": list(TREE_CANDIDATES),
+        "selection_pool": list(selection_pool),
+        "shap_capability": capability,
+        "excluded_from_selection": excluded,
         "baseline_model": BASELINE,
         "baseline_note": (
             "Logistic regression is reported for context only; it is not a "
@@ -579,8 +646,18 @@ def main() -> int:
         "generated_at": metrics["generated_at"],
         "elapsed_seconds": round(time.time() - t0, 1),
         "git_commit": git_commit(),
+        # Artifacts are generated first and committed afterwards, so this
+        # hash always names the source tree that produced the weights, not
+        # the commit that ends up shipping them.
+        "git_commit_scope": (
+            "source tree at training time — may predate the commit that "
+            "ships these weights"
+        ),
+        "seed": SEED,
         "python": platform.python_version(),
         "platform": platform.platform(),
+        "shap_capability": capability,
+        "selection_pool": list(selection_pool),
         "versions": {
             pkg: _version(pkg)
             for pkg in (
