@@ -98,7 +98,7 @@ export function Scene({ labelPortal }: SceneProps) {
   return (
     <Canvas
       dpr={[1, 1.75]}
-      camera={{ position: [0.1, 0.3, 3.8], fov: 42, near: 0.1, far: 40 }}
+      camera={{ position: [0.1, 0.7, 4.5], fov: 42, near: 0.1, far: 40 }}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
       performance={{ min: 0.5, max: 1 }}
       onPointerMissed={() => selectVessel(null)}
@@ -156,7 +156,7 @@ export function Scene({ labelPortal }: SceneProps) {
         maxDistance={9}
         minPolarAngle={0.35}
         maxPolarAngle={Math.PI - 0.35}
-        target={[0, 0.1, 0]}
+        target={[0, 0.42, 0]}
       />
 
       <AdaptiveDpr />

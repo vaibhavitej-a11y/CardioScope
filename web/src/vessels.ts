@@ -324,34 +324,180 @@ export const VESSEL_POINTS: Readonly<Record<VesselId, [number, number, number][]
 export const NODE_FRACTIONS: readonly number[] = [0.16, 0.5, 0.84]
 
 /**
- * Great vessels (aortic arch, pulmonary trunk) — context only, never
- * risk-coloured. Both start inside the heart's base so they read as growing
- * out of it rather than floating above it.
+ * Great vessels — context only, never risk-coloured.
+ *
+ * Modelled on the standard anterior anatomy used by reference systems such
+ * as the BioDigital beating-heart model: ascending aorta and arch carrying
+ * its three supra-aortic branches (brachiocephalic, left common carotid,
+ * left subclavian), the pulmonary trunk bifurcating into left and right
+ * pulmonary arteries under the arch, superior and inferior vena cava into
+ * the right atrium, and four pulmonary veins into the left atrium.
+ *
+ * Conventions that make it sit correctly on the muscle:
+ *  - x is the patient's axis (0 = midline, +x = patient's left), y runs
+ *    apex (-1) to base (+1), z is anterior (+z faces the viewer);
+ *  - every start point is buried inside the lathe body, so tubes read as
+ *    growing out of the heart instead of floating above it;
+ *  - colour encodes oxygenation with two steel tones — NOT the textbook
+ *    red/blue, because red is reserved for predicted risk in this UI
+ *    (see index.css and RISK_COLORS).
  */
-export const GREAT_VESSELS: readonly {
-  readonly points: [number, number, number][]
+const ARTERIAL = '#a8b9c9'
+const VENOUS = '#7b93ab'
+
+export interface GreatVessel {
+  readonly name: string
+  readonly points: readonly (readonly [number, number, number])[]
   readonly radius: number
-}[] = [
+  readonly color: string
+}
+
+export const GREAT_VESSELS: readonly GreatVessel[] = [
   {
-    // Ascending aorta from the base, arching over posteriorly.
+    // Ascending aorta → arch → descending, sweeping posteriorly and toward
+    // the patient's left, which is what puts the aortic knob on the left of
+    // an anterior view.
+    name: 'Aorta',
     points: [
-      [0.03, 0.9, 0.03],
-      [0.05, 1.15, 0.01],
-      [0.03, 1.38, -0.07],
-      [-0.09, 1.53, -0.21],
-      [-0.29, 1.55, -0.37],
-      [-0.45, 1.44, -0.45],
+      [-0.02, 0.82, 0.14],
+      [0.0, 1.1, 0.14],
+      [0.06, 1.36, 0.08],
+      [0.16, 1.55, -0.06],
+      [0.22, 1.63, -0.24],
+      [0.18, 1.6, -0.44],
+      [0.1, 1.46, -0.58],
+      [0.06, 1.28, -0.62],
     ],
-    radius: 0.105,
+    radius: 0.115,
+    color: ARTERIAL,
   },
   {
-    // Pulmonary trunk, anterior and to the patient's right of the aorta.
+    name: 'Brachiocephalic trunk',
     points: [
-      [-0.12, 0.88, 0.16],
-      [-0.16, 1.1, 0.21],
-      [-0.28, 1.27, 0.17],
-      [-0.45, 1.3, 0.03],
+      [0.1, 1.45, 0.01],
+      [0.06, 1.7, 0.0],
+      [-0.02, 1.94, -0.02],
     ],
-    radius: 0.085,
+    radius: 0.05,
+    color: ARTERIAL,
+  },
+  {
+    name: 'Left common carotid',
+    points: [
+      [0.19, 1.6, -0.14],
+      [0.18, 1.86, -0.16],
+      [0.17, 2.06, -0.18],
+    ],
+    radius: 0.045,
+    color: ARTERIAL,
+  },
+  {
+    name: 'Left subclavian artery',
+    points: [
+      [0.19, 1.62, -0.36],
+      [0.24, 1.84, -0.42],
+      [0.32, 1.98, -0.5],
+    ],
+    radius: 0.045,
+    color: ARTERIAL,
+  },
+  {
+    // Pulmonary trunk sits anterior to the aorta, so from the front it
+    // overlaps the ascending aorta — that occlusion is correct, not a bug.
+    name: 'Pulmonary trunk',
+    points: [
+      [0.14, 0.84, 0.26],
+      [0.16, 1.1, 0.26],
+      [0.14, 1.3, 0.18],
+    ],
+    radius: 0.1,
+    color: VENOUS,
+  },
+  {
+    name: 'Left pulmonary artery',
+    points: [
+      [0.14, 1.3, 0.18],
+      [0.34, 1.34, 0.06],
+      [0.52, 1.3, -0.1],
+    ],
+    radius: 0.075,
+    color: VENOUS,
+  },
+  {
+    name: 'Right pulmonary artery',
+    points: [
+      [0.13, 1.29, 0.16],
+      [-0.1, 1.33, 0.06],
+      [-0.34, 1.28, -0.08],
+    ],
+    radius: 0.075,
+    color: VENOUS,
+  },
+  {
+    name: 'Superior vena cava',
+    points: [
+      [-0.46, 0.88, 0.04],
+      [-0.5, 1.24, 0.03],
+      [-0.52, 1.62, 0.02],
+    ],
+    radius: 0.075,
+    color: VENOUS,
+  },
+  {
+    // Rides just outside the right margin of the muscle — the surface radius
+    // at those heights is about 0.63–0.79, so these control points stay
+    // proud of it until the last one, which is buried in the right atrium.
+    name: 'Inferior vena cava',
+    points: [
+      [-0.66, -0.22, -0.18],
+      [-0.75, 0.14, -0.16],
+      [-0.83, 0.46, -0.14],
+      [-0.85, 0.66, -0.12],
+      [-0.66, 0.84, -0.08],
+    ],
+    radius: 0.075,
+    color: VENOUS,
+  },
+  ...(['L', 'R'] as const).flatMap((side) =>
+    ([0.94, 0.82] as const).map((y, index) => {
+      const sign = side === 'L' ? 1 : -1
+      return {
+        name: `${side === 'L' ? 'Left' : 'Right'} ${
+          index === 0 ? 'superior' : 'inferior'
+        } pulmonary vein`,
+        points: [
+          [sign * 0.3, y, -0.16 - index * 0.04],
+          [sign * 0.46, y + 0.04 - index * 0.16, -0.34 - index * 0.04],
+          [sign * 0.58, y + 0.06 - index * 0.26, -0.48 - index * 0.04],
+        ] as [number, number, number][],
+        radius: 0.048,
+        color: ARTERIAL,
+      }
+    }),
+  ),
+]
+
+/**
+ * Atrial appendages ("auricles") — the ear-shaped flaps that make a base
+ * look like two atria rather than one smooth dome. Separate meshes: a lathe
+ * is rotationally symmetric, so they cannot be sculpted from the profile.
+ */
+export const AURICLES: readonly {
+  readonly name: string
+  readonly position: readonly [number, number, number]
+  readonly scale: readonly [number, number, number]
+  readonly rotation: readonly [number, number, number]
+}[] = [
+  {
+    name: 'Right auricle',
+    position: [-0.4, 0.95, 0.14],
+    scale: [0.17, 0.11, 0.07],
+    rotation: [0.15, -0.5, 0.4],
+  },
+  {
+    name: 'Left auricle',
+    position: [0.4, 0.93, 0.12],
+    scale: [0.15, 0.1, 0.065],
+    rotation: [0.1, 0.45, -0.35],
   },
 ]

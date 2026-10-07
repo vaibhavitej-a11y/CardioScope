@@ -13,12 +13,10 @@
 
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import { GREAT_VESSELS, profileSamples, warpPoint } from '../vessels'
+import { AURICLES, GREAT_VESSELS, profileSamples, warpPoint } from '../vessels'
 
 /** Myocardium. Deliberately NOT a risk colour — green/amber/red are reserved. */
 const MUSCLE = '#a16259'
-/** Great vessels (aorta, pulmonary trunk) — context only, never risk-coloured. */
-const GREAT_VESSEL_COLOR = '#8fa3b5'
 
 export function Heart() {
   const geometry = useMemo(() => {
@@ -32,7 +30,14 @@ export function Heart() {
       const y = position.getY(i)
       const z = position.getZ(i)
       const [wx, wy, wz] = warpPoint(Math.hypot(x, z), y, Math.atan2(z, x))
-      position.setXYZ(i, wx, wy, wz)
+      // Myocardial irregularity. A lathe is perfectly smooth, which reads as
+      // machined plastic; reference anatomy models carry a faint granularity.
+      // Applied radially only, so the poles stay put — and small enough that
+      // the coronaries (which follow the analytic surface, lift 1.06) keep
+      // their seating.
+      const lump =
+        1 + 0.018 * Math.sin(wx * 6.1 + wy * 4.3) * Math.cos(wz * 5.7 - wy * 3.9)
+      position.setXYZ(i, wx * lump, wy, wz * lump)
     }
     position.needsUpdate = true
     mesh.computeVertexNormals()
@@ -50,7 +55,34 @@ export function Heart() {
           metalness={0.04}
         />
       </mesh>
+      <Auricles />
       <GreatVessels />
+    </group>
+  )
+}
+
+/**
+ * Atrial appendages. Same muscle material as the body, so they read as part
+ * of the organ rather than as attachments.
+ */
+function Auricles() {
+  return (
+    <group>
+      {AURICLES.map((auricle) => (
+        <mesh
+          key={auricle.name}
+          position={auricle.position as [number, number, number]}
+          rotation={auricle.rotation as [number, number, number]}
+          scale={auricle.scale as [number, number, number]}
+        >
+          <sphereGeometry args={[1, 28, 20]} />
+          <meshStandardMaterial
+            color={MUSCLE}
+            roughness={0.66}
+            metalness={0.04}
+          />
+        </mesh>
+      ))}
     </group>
   )
 }
@@ -74,14 +106,36 @@ function GreatVessels() {
 
   return (
     <group>
-      {geometries.map((geometry, i) => (
-        <mesh key={i} geometry={geometry}>
-          <meshStandardMaterial
-            color={GREAT_VESSEL_COLOR}
-            roughness={0.6}
-            metalness={0.05}
-          />
-        </mesh>
+      {GREAT_VESSELS.map((vessel, i) => (
+        <group key={vessel.name}>
+          <mesh geometry={geometries[i]}>
+            <meshStandardMaterial
+              color={vessel.color}
+              roughness={0.6}
+              metalness={0.05}
+            />
+          </mesh>
+          {/*
+            Rounded stumps. TubeGeometry leaves both ends open, so a vessel
+            that is not buried in the muscle shows a hollow mouth — the
+            inferior vena cava read as a cut straw until these were added.
+          */}
+          {[vessel.points[0], vessel.points[vessel.points.length - 1]].map(
+            (point, index) => (
+              <mesh
+                key={`${vessel.name}-${index}`}
+                position={point as [number, number, number]}
+              >
+                <sphereGeometry args={[vessel.radius, 16, 12]} />
+                <meshStandardMaterial
+                  color={vessel.color}
+                  roughness={0.6}
+                  metalness={0.05}
+                />
+              </mesh>
+            ),
+          )}
+        </group>
       ))}
     </group>
   )
