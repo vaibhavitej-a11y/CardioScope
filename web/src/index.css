@@ -13,7 +13,11 @@
 
 /* Clinical palette is fixed by the spec's colour legend:
    GREEN = predicted normal · AMBER = uncertain · RED = predicted stenotic.
-   Do not repurpose these for generic success/warning/error states. */
+   Do not repurpose these for generic success/warning/error states.
+
+   The hex values below MUST match RISK_COLORS in web/src/vessels.ts — three.js
+   materials cannot read CSS custom properties, so both layers carry a copy.
+   riskColor() in vessels.ts ramps continuously between these three anchors. */
 
 html,
 body,
