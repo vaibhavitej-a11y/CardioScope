@@ -71,7 +71,7 @@ Open **three terminals**, all from the repo root.
 | # | Terminal | Command | Folder | Status |
 |---|---|---|---|---|
 | 1 | **Frontend** | `npm run dev` | `web/` | ✅ **works today** |
-| 2 | **Backend** | `uvicorn app.main:app --reload --port 8000` | `api/` | 🚧 **Day 2** (7 Oct) |
+| 2 | **Backend** | `uvicorn app.main:app --reload --port 8001` | `api/` | ✅ **works today** |
 | 3 | **ML training** | `python ml/src/train.py` | repo root | ✅ **works today** |
 
 Training takes ~70 s and rewrites `ml/artifacts/`. Verified metrics
@@ -94,17 +94,18 @@ Each model is also evaluated at an inner-CV-selected operating point
 cd web
 npm run dev            # → http://localhost:5173
 
-# Terminal 2 — prediction API (Day 2)
+# Terminal 2 — prediction API (works now)
 cd api
 ..\.venv\Scripts\activate        # venv lives at the REPO ROOT, not in api/
-uvicorn app.main:app --reload --port 8000    # → http://127.0.0.1:8000/docs
+uvicorn app.main:app --reload --port 8001    # → http://127.0.0.1:8001/docs
 
-# Terminal 3 — train the models (works today), from the repo root
+# Terminal 3 — train the models (works now), from the repo root
 python ml/src/train.py
 ```
 
-The frontend dev server proxies `/api` to `http://127.0.0.1:8000`
-(configured in `web/vite.config.ts`), so no CORS setup is needed.
+The frontend dev server proxies `/api` to `http://127.0.0.1:8001`
+(configured in `web/vite.config.ts`), so no CORS setup is needed. Port 8000
+is reserved for other local projects on the dev machine.
 
 ### Other commands
 
@@ -113,7 +114,8 @@ npm --prefix web run lint      # oxlint
 npm --prefix web run build     # tsc -b + vite build   (verified passing)
 npm --prefix web run preview   # serve the production build
 python -m pytest ml/tests      # leakage guard + artifact contract (passing)
-pytest                         # all tests (api tests from Day 2)
+python -m pytest api/tests     # API contract + boundary + parity gates
+pytest                         # all tests (38 passing)
 ```
 
 ---
@@ -182,7 +184,7 @@ Never commit: anything in `ml/data/processed/`, `.venv/`, `node_modules/`,
 | Activation blocked in PowerShell | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
 | `python` opens the Microsoft Store | use `py` instead, or reinstall with *Add to PATH* |
 | `pip` installs to the wrong Python | run `.venv\Scripts\activate` **first**, check `python -m pip --version` |
-| Port 8000 already in use | `netstat -ano \| findstr :8000` then `taskkill /PID <id> /F` |
+| Port 8001 already in use | `netstat -ano \| findstr :8001` then `taskkill /PID <id> /F` |
 | Port 5173 in use | Vite auto-picks 5174 — read the URL it prints |
 | `npm install` hangs or fails | `npm cache clean --force`, delete `web/node_modules`, retry |
 | Tailwind classes do nothing | you edited the wrong file — `web/src/index.css` must start with `@import "tailwindcss";` |

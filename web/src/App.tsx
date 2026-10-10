@@ -4,12 +4,10 @@ import { getPrediction } from './api/client'
 import { collectInputs, defaultInputs } from './api/features'
 import { DisclaimerBanner, DISCLAIMER_TEXT } from './components/DisclaimerBanner'
 import { DisclaimerModal } from './components/DisclaimerModal'
-import { FeatureContribution } from './components/FeatureContribution'
+import { ExplainPanel } from './components/ExplainPanel'
 import { HeartSoundToggle } from './components/HeartSoundToggle'
 import { PatientForm } from './components/PatientForm'
 import { RiskStrip } from './components/RiskStrip'
-import { ShapWaterfall } from './components/ShapWaterfall'
-import { VesselDetailPanel } from './components/VesselDetailPanel'
 import { usePatientStore } from './store/patientStore'
 import type { ViewCommand, ViewName } from './three/Scene'
 import { Scene } from './three/Scene'
@@ -76,13 +74,13 @@ function App() {
   }, [setStatus, setPrediction, setInputs])
 
   return (
-    <div className="flex h-full flex-col bg-mist text-navy">
+    <div className="flex h-full flex-col bg-deep text-navy">
       <DisclaimerBanner />
 
       <main className="flex min-h-0 flex-1 flex-col gap-3 p-3 lg:flex-row">
         <PatientForm className="hidden w-[17rem] shrink-0 lg:flex xl:w-[19rem]" />
 
-        <div className="relative min-h-[340px] flex-1 overflow-hidden rounded-xl border border-mist bg-white">
+        <div className="relative min-h-[340px] flex-1 overflow-hidden rounded-xl border border-mist bg-panel shadow-lg shadow-black/50 ring-1 ring-white/5">
           <div
             ref={labelPortal}
             aria-hidden
@@ -94,9 +92,9 @@ function App() {
             <div
               role="group"
               aria-label="Camera view"
-              className="flex rounded-full border border-mist bg-white/95 p-1 shadow-sm backdrop-blur"
+              className="flex rounded-full border border-mist bg-panel/90 p-1 shadow-md shadow-black/50 backdrop-blur"
             >
-              {(['anterior', 'posterior'] as const).map((name) => (
+              {(['anterior', 'posterior', 'basal', 'apical'] as const).map((name) => (
                 <button
                   key={name}
                   type="button"
@@ -104,7 +102,7 @@ function App() {
                   aria-pressed={view?.name === name}
                   className={`rounded-full px-3 py-1 text-[11px] font-medium capitalize transition ${
                     view?.name === name
-                      ? 'bg-navy text-white'
+                      ? 'bg-accent font-semibold text-[#051020]'
                       : 'text-slate hover:text-navy'
                   }`}
                 >
@@ -118,15 +116,13 @@ function App() {
 
         <aside className="w-full shrink-0 space-y-3 overflow-y-auto lg:w-[21rem]">
           <RiskStrip />
-          <VesselDetailPanel />
-          <ShapWaterfall />
-          <FeatureContribution />
+          <ExplainPanel />
         </aside>
 
         <PatientForm className="flex max-h-[60vh] w-full lg:hidden" />
       </main>
 
-      <footer className="border-t border-mist bg-white px-4 py-2 text-center text-[11px] text-slate">
+      <footer className="border-t border-mist bg-panel px-4 py-2 text-center text-[11px] text-slate">
         {DISCLAIMER_TEXT}
       </footer>
 

@@ -10,7 +10,7 @@
  * should not have to reach across the ml/ package boundary.
  *
  * Consumed by components/PatientForm (the input workflow the demo needs) and
- * by components/FeatureContribution (requirement 3c pairs a measurement with
+ * by components/ExplainPanel (requirement 3c pairs a measurement with
  * its contribution). Adding a clinical feature therefore means adding one row
  * here plus one column in the dataset — no layout rewrite, which is the
  * extensibility clause in the traceability doc.
@@ -104,8 +104,8 @@ export const FEATURES: readonly FeatureDef[] = [
   num('Current Smoker', 'Current smoker', 'Risk factors', 0, 1, 1, 0),
   num('EX-Smoker', 'Ex-smoker', 'Risk factors', 0, 1, 1, 0),
   num('FH', 'Family history', 'Risk factors', 0, 1, 1, 0),
-  num('Obesity', 'Obesity', 'Risk factors', 0, 1, 1, 0),
-  num('DLP', 'Dyslipidaemia', 'Risk factors', 0, 1, 1, 0),
+  cat('Obesity', 'Obesity', 'Risk factors', YES_NO, 'N'),
+  cat('DLP', 'Dyslipidaemia', 'Risk factors', YES_NO, 'N'),
 
   cat('CRF', 'Chronic renal failure', 'Comorbidity', YES_NO, 'N'),
   cat('CVA', 'Cerebrovascular accident', 'Comorbidity', YES_NO, 'N'),

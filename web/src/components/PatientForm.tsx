@@ -19,7 +19,7 @@ import { getPrediction } from '../api/client'
 import { usePatientStore } from '../store/patientStore'
 
 const inputClass =
-  'mt-1 w-full rounded-md border border-mist bg-white px-2 py-1 text-xs text-navy transition focus:border-navy focus:outline-none'
+  'mt-1 w-full rounded-md border border-mist bg-well px-2 py-1 text-xs text-navy transition focus:border-accent focus:outline-none'
 
 interface PatientFormProps {
   /** Extra classes for column placement; the form fills its container. */
@@ -53,7 +53,7 @@ export function PatientForm({ className = '' }: PatientFormProps) {
   return (
     <section
       aria-label="Patient inputs"
-      className={`min-h-0 flex-col rounded-xl border border-mist bg-white ${className}`}
+      className={`min-h-0 flex-col rounded-xl border border-mist bg-panel ${className}`}
     >
       <header className="border-b border-mist px-4 py-3">
         <div className="flex items-baseline justify-between gap-2">
@@ -91,7 +91,7 @@ export function PatientForm({ className = '' }: PatientFormProps) {
           type="button"
           onClick={run}
           disabled={busy}
-          className="w-full rounded-md bg-navy px-3 py-2 text-xs font-semibold text-white transition hover:bg-navy/90 disabled:cursor-wait disabled:opacity-60"
+          className="w-full rounded-md bg-accent px-3 py-2 text-xs font-semibold text-[#051020] transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
         >
           {busy ? 'Running prediction…' : 'Run prediction'}
         </button>
@@ -99,7 +99,7 @@ export function PatientForm({ className = '' }: PatientFormProps) {
           type="button"
           onClick={() => setInputs(defaultInputs())}
           disabled={busy}
-          className="w-full rounded-md border border-mist px-3 py-1.5 text-[11px] text-slate transition hover:border-navy/40 hover:text-navy disabled:opacity-60"
+          className="w-full rounded-md border border-mist px-3 py-1.5 text-[11px] text-slate transition hover:border-accent/60 hover:text-accent disabled:opacity-60"
         >
           Reset to population defaults
         </button>

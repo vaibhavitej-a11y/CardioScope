@@ -15,8 +15,14 @@
 
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import type { ReactNode, RefObject } from 'react'
-import { AdaptiveDpr, OrbitControls } from '@react-three/drei'
+import {
+  AdaptiveDpr,
+  Environment,
+  Lightformer,
+  OrbitControls,
+} from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import type { VesselId } from '../api/types'
 import {
@@ -26,6 +32,7 @@ import {
 } from '../store/patientStore'
 import { NODE_FRACTIONS, VESSELS, riskColor } from '../vessels'
 import { beatPhase, beatScale } from './heartbeat'
+import { CardiacVeins } from './CardiacVeins'
 import { Heart } from './Heart'
 import { vesselPointAt } from './curve'
 import { VesselLabels } from './VesselLabels'
@@ -56,7 +63,7 @@ interface NodePlacement {
 }
 
 /** Camera presets — fixed views the demo can jump to without orbiting. */
-export type ViewName = 'anterior' | 'posterior'
+export type ViewName = 'anterior' | 'posterior' | 'basal' | 'apical'
 
 /**
  * A view request. `nonce` changes on every click so re-pressing the button
@@ -70,6 +77,8 @@ export interface ViewCommand {
 const VIEW_POSITIONS: Record<ViewName, [number, number, number]> = {
   anterior: [0.1, 0.7, 4.5],
   posterior: [0.1, 0.9, -4.5],
+  basal: [0.15, 1.1, 5.5],
+  apical: [0.1, 0.3, 2.2],
 }
 
 interface SceneProps {
@@ -131,20 +140,53 @@ export function Scene({ labelPortal, view }: SceneProps) {
       performance={{ min: 0.5, max: 1 }}
       onPointerMissed={() => selectVessel(null)}
     >
-      <color attach="background" args={['#eef3f7']} />
+      <GradientBackdrop />
 
       {/*
-        Key + fill + rim, with a deliberately low ambient term: high ambient
-        light flattens the shading, which is exactly what made the first
-        procedural cut look like a smooth blob instead of a solid organ.
+        Studio rig: an IBL environment (all lightformers are rendered
+        locally — nothing is fetched, Track A stays offline) for the wet
+        speculars, a warm key, a cool fill, and a strong back rim so the
+        silhouette glows against the backdrop the way reference medical
+        renders do.
       */}
-      <ambientLight intensity={0.45} />
-      <directionalLight position={[4.5, 3, 2.5]} intensity={1.35} />
-      <directionalLight position={[-4, 1, -3]} intensity={0.5} />
-      <directionalLight position={[-2, 3, -5]} intensity={0.65} />
+      <Environment resolution={128} frames={1}>
+        <Lightformer
+          form="rect"
+          intensity={3}
+          position={[0, 3.5, 4]}
+          rotation-x={Math.PI / 3}
+          scale={[7, 4, 1]}
+          color="#ffffff"
+        />
+        <Lightformer
+          form="ring"
+          intensity={2.2}
+          position={[-5, 1, -3]}
+          scale={4}
+          color="#cfe4ff"
+        />
+        <Lightformer
+          form="rect"
+          intensity={2.6}
+          position={[4, 0.5, -4.5]}
+          rotation-y={-Math.PI / 3}
+          scale={[5, 6, 1]}
+          color="#ffdcc4"
+        />
+      </Environment>
+
+      <ambientLight intensity={0.3} />
+      <hemisphereLight color="#9fc6ff" groundColor="#1a2436" intensity={0.45} />
+      <directionalLight position={[4.5, 3, 2.5]} intensity={0.95} />
+      <directionalLight position={[-4, 1, -3]} intensity={0.35} />
+      {/* Warm back-rim: light travelling through the muscle (transmission)
+          plus this fresnel-separable edge is what sells "living tissue". */}
+      <directionalLight position={[-1.5, 2.5, -4.5]} intensity={1.25} color="#ffb08a" />
+      <directionalLight position={[2, 4, -3]} intensity={0.55} color="#ffffff" />
 
       <OrganGroup targetScale={targetScale}>
         <Heart />
+        <CardiacVeins />
 
         {VESSELS.map((vessel) => (
           <VesselTube
@@ -190,8 +232,65 @@ export function Scene({ labelPortal, view }: SceneProps) {
       />
 
       <AdaptiveDpr />
+
+      {/*
+        Bloom picks up the speculars and the vessel emissives — a soft glow
+        that reads as "studio render" instead of "browser canvas". Vignette
+        pulls the eye to centre frame. Both are cheap; AdaptiveDpr steps the
+        resolution down if the frame budget slips.
+      */}
+      <EffectComposer multisampling={4}>
+        <Bloom
+          intensity={0.85}
+          luminanceThreshold={0.62}
+          luminanceSmoothing={0.32}
+          mipmapBlur
+          radius={0.85}
+        />
+        <Vignette offset={0.26} darkness={0.55} />
+      </EffectComposer>
     </Canvas>
   )
+}
+
+/**
+ * Radial studio backdrop — a deep midnight wash with a soft blue glow behind
+ * the organ that falls off to near-black at the edges. A CanvasTexture on
+ * scene.background is camera-independent (survives the posterior preset) and
+ * needs no network fetch, keeping Track A fully offline.
+ */
+function GradientBackdrop() {
+  const texture = useMemo(() => {
+    const size = 512
+    const canvas = document.createElement('canvas')
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      const gradient = ctx.createRadialGradient(
+        size * 0.5,
+        size * 0.42,
+        size * 0.05,
+        size * 0.5,
+        size * 0.5,
+        size * 0.8,
+      )
+      gradient.addColorStop(0, '#1b3050')
+      gradient.addColorStop(0.45, '#0d1626')
+      gradient.addColorStop(1, '#05080f')
+      ctx.fillStyle = gradient
+      ctx.fillRect(0, 0, size, size)
+    }
+    const map = new THREE.CanvasTexture(canvas)
+    map.colorSpace = THREE.SRGBColorSpace
+    return map
+  }, [])
+
+  useEffect(() => () => texture.dispose(), [texture])
+
+  // attach="background" sets scene.background on mount and restores it on
+  // unmount — no direct mutation of the hook's return value.
+  return <primitive object={texture} attach="background" />
 }
 
 /**
@@ -218,7 +317,22 @@ function OrganGroup({
     if (!group) return
     const ease = 1 - Math.exp(-8 * Math.min(delta, 0.1))
     smoothed.current += (targetScale - smoothed.current) * ease
-    group.scale.setScalar(smoothed.current * beatScale(beatPhase()))
+
+    // Systole reads as a *contraction*, not an inflate: the radial bulge is
+    // stronger than the long axis, and a torsional sway (apex leading) rides
+    // the same phase. Amplitudes stay tiny — coronaries must keep their seat.
+    const k = beatScale(beatPhase()) - 1
+    const base = smoothed.current
+    group.scale.set(
+      base * (1 + k * 1.2),
+      base * (1 + k * 0.5),
+      base * (1 + k * 1.2),
+    )
+    group.rotation.set(
+      HEART_TILT[0] + k * 0.35,
+      HEART_TILT[1],
+      HEART_TILT[2] + k * 0.55,
+    )
   })
 
   return <group ref={ref} rotation={HEART_TILT}>{children}</group>

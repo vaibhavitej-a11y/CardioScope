@@ -23,6 +23,8 @@ dist/
 
 # misc
 *.log
+*.err
 *.mp4
 .DS_Store
 Thumbs.db
+.pytest_cache/

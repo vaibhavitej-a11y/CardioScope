@@ -1,10 +1,17 @@
 @import "tailwindcss";
 
-/* ---- design tokens ---------------------------------------------------- */
+/* ---- design tokens (dark studio theme) -------------------------------- */
 @theme {
-  --color-navy: #1f3b57;
-  --color-slate: #5a6b7b;
-  --color-mist: #eef3f7;
+  /* Text on dark: primary ink reads near-white, secondary a cool grey-blue.
+     mist flips from "light fill" to "border/track" duty — every panel uses
+     bg-panel on a bg-deep page, so light-on-dark is the whole system. */
+  --color-navy: #e9eefb;
+  --color-slate: #8fa1ba;
+  --color-mist: #223049;
+  --color-panel: #0e1626;
+  --color-deep: #070b13;
+  --color-well: #0a1120;
+  --color-accent: #38bdf8;
   --color-risk-low: #27ae60;
   --color-risk-mid: #f39c12;
   --color-risk-high: #e74c3c;
@@ -17,7 +24,11 @@
 
    The hex values below MUST match RISK_COLORS in web/src/vessels.ts — three.js
    materials cannot read CSS custom properties, so both layers carry a copy.
-   riskColor() in vessels.ts ramps continuously between these three anchors. */
+   riskColor() in vessels.ts ramps continuously between these three anchors.
+
+   The accent (sky blue) is the UI action colour only — run buttons, the
+   active camera pill, selection rings. It is deliberately outside the risk
+   palette so a selected vessel can never be mistaken for a band. */
 
 html,
 body,
@@ -29,5 +40,17 @@ body {
   margin: 0;
   font-family: var(--font-sans);
   color: var(--color-navy);
-  background: #f7fafc;
+  background: var(--color-deep);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #26344d;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }

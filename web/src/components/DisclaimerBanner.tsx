@@ -5,10 +5,10 @@
  * not enough to be unmissable, so this renders as a persistent top banner;
  * DisclaimerModal covers first launch and the page footer covers scroll.
  *
- * TODO(M2): once `api/app/constants.py` exists, this string should come from
- * GET /api/config so backend and frontend cannot drift. Until then this file
- * is the single frontend source of truth — do not restate the sentence
- * anywhere else.
+ * The matching backend source of truth is `api/app/constants.py`
+ * (exposed via GET /api/config). Drift between the two is blocked by
+ * `api/tests/test_schema_parity.py`, which fails if the strings ever
+ * differ — so keep edits in lockstep.
  */
 
 export const DISCLAIMER_TEXT =
@@ -18,7 +18,7 @@ export function DisclaimerBanner() {
   return (
     <div
       role="note"
-      className="border-b border-risk-high/30 bg-risk-high/10 px-4 py-2 text-center text-xs font-semibold text-risk-high"
+      className="border-b border-risk-high/40 bg-risk-high/15 px-4 py-2 text-center text-xs font-semibold text-risk-high"
     >
       {DISCLAIMER_TEXT}
     </div>

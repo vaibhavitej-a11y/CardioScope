@@ -33,6 +33,12 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from _shap_compat import ensure_shap_importable  # noqa: E402
+
+ensure_shap_importable()
+
 import joblib
 import numpy as np
 import pandas as pd

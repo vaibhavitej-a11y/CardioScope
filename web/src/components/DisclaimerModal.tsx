@@ -20,9 +20,9 @@ export function DisclaimerModal() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="disclaimer-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-navy/55 p-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-6"
     >
-      <div className="w-full max-w-md rounded-xl border border-risk-high/30 bg-white p-6 shadow-2xl">
+      <div className="w-full max-w-md rounded-xl border border-risk-high/40 bg-panel p-6 shadow-2xl ring-1 ring-white/10">
         <p className="text-xs font-semibold uppercase tracking-wide text-risk-high">
           Clinical safety notice
         </p>
@@ -40,7 +40,7 @@ export function DisclaimerModal() {
         <button
           type="button"
           onClick={dismiss}
-          className="mt-5 w-full rounded-lg bg-navy px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-navy/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy"
+          className="mt-5 w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-[#051020] transition hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           I understand — continue
         </button>

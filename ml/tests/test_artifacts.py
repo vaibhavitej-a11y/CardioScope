@@ -16,6 +16,10 @@ import pandas as pd
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from _shap_compat import ensure_shap_importable  # noqa: E402
+
+ensure_shap_importable()
 import data as D  # noqa: E402
 
 ART = Path(__file__).resolve().parents[1] / "artifacts"

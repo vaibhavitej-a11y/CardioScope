@@ -62,9 +62,9 @@ export function GaugeCard({
   )
 
   const className = [
-    'rounded-lg border bg-white p-2.5 text-left transition',
+    'rounded-lg border bg-panel p-2.5 text-left transition ring-1 ring-white/5',
     active
-      ? 'border-navy ring-1 ring-navy/25'
+      ? 'border-accent/70 ring-accent/30'
       : 'border-mist hover:border-navy/40',
   ].join(' ')
 

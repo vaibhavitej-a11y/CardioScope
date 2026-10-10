@@ -1,6 +1,6 @@
 # api/ — FastAPI prediction service (M2)
 #
-# Run:  uvicorn app.main:app --reload --port 8000
+# Run:  uvicorn app.main:app --reload --port 8001
 
 fastapi>=0.139
 uvicorn[standard]>=0.51

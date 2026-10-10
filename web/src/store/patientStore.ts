@@ -89,8 +89,8 @@ export function useSelectedVessel(): VesselId | null {
 /**
  * Which SHAP breakdown the interpretation panels (requirements 3b/3c) show:
  * the vessel selected in the 3D scene, or the overall CAD prediction when
- * nothing is selected. One selector shared by ShapWaterfall and
- * FeatureContribution so the two panels can never disagree about scope.
+ * nothing is selected. One selector shared by ExplainPanel so the panel
+ * can never disagree about scope with the 3D scene.
  */
 export function useShapScope(): 'cad' | VesselId {
   return usePatientStore((s) => s.selectedVessel ?? 'cad')

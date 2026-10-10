@@ -64,10 +64,10 @@ export function VesselLabels({
           >
             <div
               className={[
-                'flex items-center gap-1.5 rounded-full border bg-white/95 px-2 py-0.5 text-[10px] leading-none shadow-sm transition-opacity',
+                'flex items-center gap-1.5 rounded-full border bg-panel/95 px-2 py-0.5 text-[10px] leading-none shadow-md shadow-black/40 backdrop-blur transition-opacity',
                 selected
-                  ? 'border-navy opacity-100 ring-1 ring-navy/25'
-                  : 'border-mist opacity-75',
+                  ? 'border-accent opacity-100 ring-1 ring-accent/40'
+                  : 'border-mist opacity-80',
               ].join(' ')}
               title={VESSEL_META[vessel].name}
             >

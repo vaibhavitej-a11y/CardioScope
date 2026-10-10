@@ -20,20 +20,23 @@ import {
   surfacePoint,
   warpPoint,
 } from '../vessels'
+import {
+  createMuscleMaterial,
+  createSulcusMaterial,
+  createVesselWallMaterial,
+} from './materials'
 
-/** Myocardium. Deliberately NOT a risk colour — green/amber/red are reserved. */
-const MUSCLE = '#a16259'
-/** Atrioventricular groove — darker muscle sitting in the sulcus warp. */
-const SULCUS = '#7c443c'
 /** Height of the coronary sulcus dip in warpPoint(); must match it exactly. */
 const SULCUS_Y = 0.74
 
 export function Heart() {
   const geometry = useMemo(() => {
-    const profile = profileSamples(72).map(
+    // 96 profile samples / 96 radial steps: the silhouette stays smooth at
+    // the apical view (camera 2.2 units away) where 72 showed faceting.
+    const profile = profileSamples(96).map(
       ([r, y]) => new THREE.Vector2(r, y),
     )
-    const mesh = new THREE.LatheGeometry(profile, 72)
+    const mesh = new THREE.LatheGeometry(profile, 96)
     const position = mesh.attributes.position
     for (let i = 0; i < position.count; i++) {
       const x = position.getX(i)
@@ -42,33 +45,40 @@ export function Heart() {
       const [wx, wy, wz] = warpPoint(Math.hypot(x, z), y, Math.atan2(z, x))
       // Myocardial irregularity. A lathe is perfectly smooth, which reads as
       // machined plastic; reference anatomy models carry a faint granularity.
-      // Applied radially only, so the poles stay put — and small enough that
-      // the coronaries (which follow the analytic surface, lift 1.06) keep
-      // their seating.
-      const lump =
-        1 + 0.018 * Math.sin(wx * 6.1 + wy * 4.3) * Math.cos(wz * 5.7 - wy * 3.9)
-      position.setXYZ(i, wx * lump, wy, wz * lump)
+      // Two octaves — a broad lobulation plus fine grain — applied radially
+      // only, so the poles stay put and the coronaries (which follow the
+      // analytic surface, lift 1.06) keep their seating.
+      const lobes =
+        1 +
+        0.02 * Math.sin(wx * 6.1 + wy * 4.3) * Math.cos(wz * 5.7 - wy * 3.9)
+      const grain =
+        0.007 *
+        Math.sin(wx * 17.3 + wy * 11.7) *
+        Math.cos(wz * 15.9 - wx * 8.2)
+      position.setXYZ(i, wx * (lobes + grain), wy, wz * (lobes + grain))
     }
     position.needsUpdate = true
     mesh.computeVertexNormals()
     return mesh
   }, [])
 
-  useEffect(() => () => geometry.dispose(), [geometry])
+  const muscle = useMemo(() => createMuscleMaterial(), [])
+  const sulcusMaterial = useMemo(() => createSulcusMaterial(), [])
+
+  useEffect(
+    () => () => {
+      geometry.dispose()
+      muscle.dispose()
+      sulcusMaterial.dispose()
+    },
+    [geometry, muscle, sulcusMaterial],
+  )
 
   return (
     <group>
-      <mesh geometry={geometry}>
-        <meshPhysicalMaterial
-          color={MUSCLE}
-          roughness={0.62}
-          metalness={0.04}
-          clearcoat={0.35}
-          clearcoatRoughness={0.6}
-        />
-      </mesh>
-      <CoronarySulcus />
-      <Auricles />
+      <mesh geometry={geometry} material={muscle} />
+      <CoronarySulcus material={sulcusMaterial} />
+      <Auricles material={muscle} />
       <GreatVessels />
     </group>
   )
@@ -80,7 +90,7 @@ export function Heart() {
  * dark band sits half-sunk in that dip so the atria read as a separate mass
  * above the ventricles instead of one continuous dome.
  */
-function CoronarySulcus() {
+function CoronarySulcus({ material }: { material: THREE.Material }) {
   const geometry = useMemo(() => {
     const points: THREE.Vector3[] = []
     const steps = 96
@@ -95,18 +105,14 @@ function CoronarySulcus() {
 
   useEffect(() => () => geometry.dispose(), [geometry])
 
-  return (
-    <mesh geometry={geometry}>
-      <meshStandardMaterial color={SULCUS} roughness={0.72} metalness={0.04} />
-    </mesh>
-  )
+  return <mesh geometry={geometry} material={material} />
 }
 
 /**
  * Atrial appendages. Same muscle material as the body, so they read as part
  * of the organ rather than as attachments.
  */
-function Auricles() {
+function Auricles({ material }: { material: THREE.Material }) {
   return (
     <group>
       {AURICLES.map((auricle) => (
@@ -115,15 +121,9 @@ function Auricles() {
           position={auricle.position as [number, number, number]}
           rotation={auricle.rotation as [number, number, number]}
           scale={auricle.scale as [number, number, number]}
+          material={material}
         >
           <sphereGeometry args={[1, 28, 20]} />
-          <meshPhysicalMaterial
-            color={MUSCLE}
-            roughness={0.66}
-            metalness={0.04}
-            clearcoat={0.35}
-            clearcoatRoughness={0.6}
-          />
         </mesh>
       ))}
     </group>
@@ -145,21 +145,24 @@ function GreatVessels() {
     [],
   )
 
-  useEffect(() => () => geometries.forEach((g) => g.dispose()), [geometries])
+  const materials = useMemo(
+    () => GREAT_VESSELS.map((vessel) => createVesselWallMaterial(vessel.color)),
+    [],
+  )
+
+  useEffect(
+    () => () => {
+      geometries.forEach((g) => g.dispose())
+      materials.forEach((m) => m.dispose())
+    },
+    [geometries, materials],
+  )
 
   return (
     <group>
       {GREAT_VESSELS.map((vessel, i) => (
         <group key={vessel.name}>
-          <mesh geometry={geometries[i]}>
-            <meshPhysicalMaterial
-              color={vessel.color}
-              roughness={0.55}
-              metalness={0.05}
-              clearcoat={0.5}
-              clearcoatRoughness={0.35}
-            />
-          </mesh>
+          <mesh geometry={geometries[i]} material={materials[i]} />
           {/*
             Rounded stumps. TubeGeometry leaves both ends open, so a vessel
             that is not buried in the muscle shows a hollow mouth — the
@@ -170,15 +173,9 @@ function GreatVessels() {
               <mesh
                 key={`${vessel.name}-${index}`}
                 position={point as [number, number, number]}
+                material={materials[i]}
               >
                 <sphereGeometry args={[vessel.radius, 16, 12]} />
-                <meshPhysicalMaterial
-                  color={vessel.color}
-                  roughness={0.55}
-                  metalness={0.05}
-                  clearcoat={0.5}
-                  clearcoatRoughness={0.35}
-                />
               </mesh>
             ),
           )}

@@ -48,12 +48,15 @@ export function VesselNode({
       }}
     >
       <sphereGeometry args={[RADIUS, 18, 14]} />
-      <meshStandardMaterial
+      <meshPhysicalMaterial
         color={color}
         emissive={color}
-        emissiveIntensity={selected ? 0.8 : 0.35}
-        roughness={0.3}
-        metalness={0.1}
+        emissiveIntensity={selected ? 1 : hovered ? 0.65 : 0.45}
+        roughness={0.25}
+        metalness={0}
+        clearcoat={1}
+        clearcoatRoughness={0.15}
+        envMapIntensity={1.3}
       />
     </mesh>
   )

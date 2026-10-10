@@ -501,3 +501,48 @@ export const AURICLES: readonly {
     rotation: [0.1, 0.45, -0.35],
   },
 ]
+
+/* ---------------------------------------------------------- cardiac veins */
+
+/**
+ * Cardiac venous return — anatomical context only, never risk-coloured.
+ *
+ * Steel-blue (see GREAT_VESSELS' colour note: red is reserved for predicted
+ * risk). The great cardiac vein runs in the anterior interventricular groove
+ * beside the LAD, offset toward the patient's left ventricle side; the
+ * coronary sinus circles the posterior AV groove below the crux where LCX
+ * and RCA meet.
+ */
+export interface CardiacVein {
+  readonly name: string
+  readonly points: readonly (readonly [number, number, number])[]
+  readonly radius: number
+  readonly color: string
+}
+
+const VEIN_COLOR = '#5f8fc4'
+
+export const CARDIAC_VEINS: readonly CardiacVein[] = [
+  {
+    name: 'Great cardiac vein',
+    radius: 0.02,
+    color: VEIN_COLOR,
+    points: ROUTE_SAMPLES.LAD.map(
+      ([y, phi]) => surfacePoint(y, ((phi - 9) * Math.PI) / 180, 1.09),
+    ),
+  },
+  {
+    name: 'Coronary sinus',
+    radius: 0.026,
+    color: VEIN_COLOR,
+    points: (
+      [
+        [0.3, -55],
+        [0.27, -85],
+        [0.25, -115],
+        [0.26, -145],
+        [0.3, -170],
+      ] as const
+    ).map(([y, phi]) => surfacePoint(y, (phi * Math.PI) / 180, 1.09)),
+  },
+]
