@@ -113,7 +113,46 @@ def test_metrics_covers_all_five_required_metrics():
 def test_manifest_records_dataset_hash_and_versions():
     m = json.loads((ART / "manifest.json").read_text(encoding="utf-8"))
     assert m["dataset_sha256"] == D.dataset_sha256()
-    assert m["seed"] if "seed" in m else True
+    assert m["seed"] == 42, "training seed must be recorded and fixed"
     for pkg in ("numpy", "scikit-learn", "lightgbm", "xgboost", "catboost", "shap"):
         assert m["versions"][pkg] != "unknown", f"version of {pkg} not recorded"
     assert set(m["artifacts"]) == {f"{t}.joblib" for t in TARGETS}
+    assert m["selection_pool"], "selection pool must not be empty"
+    assert set(m["selection_pool"]) <= set(m["shap_capability"])
+    for name in m["selection_pool"]:
+        assert m["shap_capability"][name] is True, (
+            f"{name} selected but cannot explain in probability units"
+        )
+
+
+def test_shap_units_consistent_across_targets():
+    """Requirement 3b (SHAP) + rubric 3: one unit across all four vessels.
+
+    Raw/log-odds contributions run ~18x larger than probability ones for the
+    same data, so a dashboard mixing the two would silently overstate some
+    vessels. The test asserts both the recorded mode and, numerically, that
+    each target's contributions close the SHAP additivity loop inside
+    [-1, 1] — true in probability units, false on the raw scale.
+    """
+    modes = {t: _load(t)["shap_mode"] for t in TARGETS}
+    assert len(set(modes.values())) == 1, f"mixed SHAP units across targets: {modes}"
+    assert set(modes.values()) == {"interventional_probability"}, modes
+
+    raw = D.clean(D.load_raw())
+    X, _ = D.split(raw)
+    rows = X.iloc[:8]
+    for t in TARGETS:
+        b = _load(t)
+        Xt = b["pipeline"].named_steps["prep"].transform(rows)
+        sv = b["shap_explainer"].shap_values(Xt)
+        if isinstance(sv, list):
+            sv = sv[-1]
+        sv = np.asarray(sv)
+        if sv.ndim == 3:
+            sv = sv[:, :, -1]
+        residual = float(np.abs(sv.sum(axis=1)).max())
+        assert residual <= 1.05, (
+            f"{t}: contributions sum to {residual:.3f} — outside the "
+            f"[-1, 1] probability range, so this explainer is not in "
+            f"probability units"
+        )

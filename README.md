@@ -74,20 +74,31 @@ Open **three terminals**, all from the repo root.
 | 2 | **Backend** | `uvicorn app.main:app --reload --port 8001` | `api/` | ✅ **works today** |
 | 3 | **ML training** | `python ml/src/train.py` | repo root | ✅ **works today** |
 
-Training takes ~70 s and rewrites `ml/artifacts/`. Verified metrics
+Training takes ~95 s and rewrites `ml/artifacts/`. Verified metrics
 (5-fold stratified CV, seed 42, out-of-fold pooled):
 
 | Target | Model | ROC-AUC | F1 | Precision | Recall | Accuracy |
 |---|---|---|---|---|---|---|
 | Cath (CAD) | CatBoost | **0.912** | 0.900 | 0.887 | 0.912 | 0.855 |
 | LAD | CatBoost | **0.849** | 0.819 | 0.797 | 0.842 | 0.782 |
-| LCX | XGBoost | **0.743** | 0.583 | 0.604 | 0.563 | 0.683 |
+| LCX | CatBoost | **0.739** | 0.617 | 0.640 | 0.597 | 0.710 |
 | RCA | CatBoost | **0.703** | 0.507 | 0.558 | 0.465 | 0.660 |
 
 Each model is also evaluated at an inner-CV-selected operating point
 (higher recall for screening); both operating points are recorded in
 `ml/artifacts/metrics.json`. LCX and RCA are the genuinely hard targets
 — that is what the data supports, not a bug.
+
+Model selection is restricted to candidates that can explain themselves in
+probability units (requirement 3b). On this build XGBoost cannot: it raises
+`NotImplementedError` for `feature_perturbation="interventional"` +
+`model_output="probability"`, so its raw/log-odds contributions run ~18×
+larger than the others'. Letting it win LCX would have made the 3D vessel
+contributions incomparable across targets — LCX ROC-AUC 0.743 → 0.739 buys
+F1 0.583 → 0.617 and one consistent unit everywhere. The capability is
+probed at runtime and recorded in `metrics.json` → `shap_capability`, and
+`ml/tests/test_artifacts.py` asserts every shipped model uses
+`interventional_probability`.
 
 ```powershell
 # Terminal 1 — frontend (available now)
