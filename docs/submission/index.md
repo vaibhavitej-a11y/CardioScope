@@ -73,11 +73,14 @@ Four **independent binary classifiers**, one shared preprocessing pattern
   predicted exactly once).
 - **Operating point:** each outer training split picks its threshold on an
   inner 3-fold CV (maximising F1) so the validation fold never tunes its own
-  cut-off. Production threshold = max-F1 on pooled OOF (e.g. Cath 0.27, LAD
-  0.35, LCX 0.26, RCA 0.08). Tuning **raises recall for screening** —
+cut-off. Production threshold = max-F1 on pooled OOF (e.g. Cath 0.27, LAD
+0.35, LCX 0.25, RCA 0.08). Tuning **raises recall for screening** —
   recorded separately, never mixed with default-0.5 numbers.
 - **Explainability:** SHAP `TreeExplainer` per selected tree model
-  (requirement 3b allows SHAP *or* LIME; decision D5: SHAP only).
+  (requirement 3b allows SHAP *or* LIME; decision D5: SHAP only). Model
+  selection is restricted to explainers that report in **probability
+  units** — models that fall back to raw/log-odds contributions are
+  excluded, so all four dashboards are directly comparable.
 - **Artifacts:** joblib bundle per target + `metrics.json` + SHAP report,
   rewritten by `python ml/src/train.py` in ~70 s, versioned with git commit.
 
@@ -89,7 +92,7 @@ Four **independent binary classifiers**, one shared preprocessing pattern
 |---|---|---|---|---|---|---|
 | **Cath / CAD** (CatBoost) | **0.913 ± 0.052** | 0.855 | 0.887 | 0.912 | **0.900** | 0.949 |
 | **LAD** (CatBoost) | **0.847 ± 0.047** | 0.782 | 0.797 | 0.842 | **0.819** | 0.904 |
-| **LCX** (XGBoost) | 0.743 ± 0.065 | 0.683 | 0.604 | 0.563 | 0.583 | 0.824 |
+| **LCX** (CatBoost) | 0.736 ± 0.076 | 0.710 | 0.640 | 0.597 | **0.617** | 0.815 |
 | **RCA** (CatBoost) | 0.704 ± 0.050 | 0.660 | 0.558 | 0.465 | 0.507 | 0.860 |
 
 Context: the logistic-regression baseline reaches ROC-AUC 0.925 on Cath —

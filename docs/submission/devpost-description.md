@@ -43,7 +43,7 @@ is exactly where mistakes happen.
 |---|---|---|
 | CAD (Cath) | **0.913** | 0.900 |
 | LAD | **0.847** | 0.819 |
-| LCX | 0.743 | 0.583 |
+| LCX | 0.739 | 0.617 |
 | RCA | 0.704 | 0.507 |
 
 ## What's working today
