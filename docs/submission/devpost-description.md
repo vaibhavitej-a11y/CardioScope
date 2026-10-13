@@ -1,81 +1,80 @@
-# Devpost Project Description (S-1) — draft for copy-paste
+# CardioScope — Interactive Cardiovascular Risk Exploration
 
-> Paste into the Devpost "Project Description" field (Markdown renders there).
-> Fill `[]` placeholders before submitting.
+## Inspiration
+
+Clinical risk scores can be difficult to connect to anatomy. We wanted a
+research workspace where a user can inspect a coronary vessel, see its predicted
+risk, and understand which clinical features influenced the model.
+
+## What it does
+
+CardioScope estimates overall CAD probability and stenosis probabilities for
+LAD, LCX, and RCA from 54 clinical inputs. It maps vessel probabilities onto an
+interactive procedural 3D heart and pairs them with SHAP explanations and the
+measurements used in each assessment.
+
+Users can rotate, zoom, switch camera views, select vessels, toggle labels,
+expand the viewer, and export an assessment through the browser's print dialog.
+A camera-following anatomical compass keeps directions consistent during
+rotation. Overall CAD uses likelihood labels, while vessel cards describe
+predicted stenosis. Probabilities retain decimal precision rather than rounding
+near-one outputs to an apparent 100% certainty.
+
+## How we built it
+
+- **Frontend:** React 19, TypeScript, Vite, Tailwind CSS, Zustand, Three.js,
+  React Three Fiber, and Drei. Anatomy and textures are generated locally.
+- **Backend:** FastAPI validates 54 allowed clinical features and serves four
+  committed CatBoost classifiers with SHAP explanations.
+- **Training:** scikit-learn pipelines, five stratified CV folds, seed 42,
+  with LightGBM/XGBoost/CatBoost candidates and a logistic baseline.
+- **Explainability:** selected models support SHAP in probability units, with
+  one-hot contributions aggregated to original clinical features.
+
+## Results
+
+Recorded pooled out-of-fold results on the 303-record UCI Extension of
+Z-Alizadeh Sani dataset (ID 411, CC BY 4.0):
+
+| Target | ROC-AUC | F1 |
+| --- | --- | --- |
+| CAD / Cath | 0.912 | 0.900 |
+| LAD | 0.849 | 0.819 |
+| LCX | 0.739 | 0.617 |
+| RCA | 0.703 | 0.507 |
+
+These are research cross-validation results, not prospective clinical
+validation. LCX and RCA remain the weaker targets. Full metrics, model versions,
+thresholds, dataset provenance, and tests are included in the repository.
+
+## Challenges and lessons
+
+Keeping input schemas, model outputs, anatomical identifiers, and explanations
+consistent mattered as much as the visuals. Tests exclude all target labels
+from predictor inputs and verify API/frontend/schema parity. The app preserves
+the measurements behind a score when the user begins editing another profile.
+We also separated CAD wording from vessel terminology and made high probabilities
+visible without misleading integer rounding.
+
+## Run the project
+
+The repository README provides complete Windows and macOS/Linux setup steps.
+Run the local FastAPI service on port 8001 and Vite in a second terminal. The
+trained models are included; users do not need to retrain before launching.
+Pinned Python requirements and the npm lockfile record the verified environment.
+
+Repository: https://github.com/vaibhavitej-a11y/CardioScope
+
+## Next steps
+
+Calibration assessment, external datasets, prospective validation, and imaging
+inputs are future research directions. The current anatomy is illustrative;
+the dataset does not support patient-specific lesion localization.
+
+> For decision support / educational purposes only — not a substitute for formal diagnostic imaging.
 
 ---
 
-## The problem
-
-Coronary artery disease is the world's leading cause of death, yet risk is
-usually presented as tables and scores that are hard to interpret spatially.
-Clinicians and students must translate "LAD 94% predicted stenosis
-probability" into an anatomical picture in their head — and that translation
-is exactly where mistakes happen.
-
-## What we built
-
-**CardioScope** — an interactive 3D cardiovascular risk visualisation:
-
-- **Predicts** overall CAD status and *predicted stenosis probability* for
-  three major coronary arteries (LAD, LCX, RCA) from **54 routine clinical
-  features** (demographics, examination, ECG, laboratory, echocardiography).
-- **Maps the predictions onto an interactive 3D heart**: each vessel is
-  colour-ramped by its predicted risk, clickable, and labelled with its
-  probability. Rotate, zoom, select a vessel → instant detail panel.
-- **Explains every prediction** with SHAP: one panel where each driver
-  appears once — feature, measured value and signed contribution side by
-  side; select a vessel and the same panel reframes to it.
-- **Safety-first**: a clear disclaimer in the startup modal, a persistent
-  banner and the page footer — *decision support / educational only*.
-
-## How it works
-
-| Layer | Stack |
-|---|---|
-| ML | 4 gradient-boosted classifiers (CatBoost/XGBoost/LightGBM) + logistic baseline, 5-fold stratified CV (seed 42), SHAP `TreeExplainer`. Target leakage (`Cath`, `LAD`, `LCX`, `RCA` as inputs) is blocked by unit tests. |
-| Backend | FastAPI `POST /api/predict`, typed contract shared with the frontend |
-| Frontend | React 19 + TypeScript + React Three Fiber — **fully procedural anatomy** (zero downloaded assets, works offline), Zustand store drives form ↔ 3D ↔ dashboard |
-
-**Headline metrics** (pooled out-of-fold, n = 303, UCI 411, CC BY 4.0):
-
-| Target | ROC-AUC | F1 |
-|---|---|---|
-| CAD (Cath) | **0.913** | 0.900 |
-| LAD | **0.847** | 0.819 |
-| LCX | 0.739 | 0.617 |
-| RCA | 0.704 | 0.507 |
-
-## What's working today
-
-- Interactive 3D viewer: rotate / zoom / select vessels, camera presets,
-  heartbeat animation, pulsing blood-flow bands, cardiac veins, risk
-  colouring and labels
-- 54-feature patient form with population defaults; run predictions end-to-end
-- SHAP explanation panel scoped to the 3D selection, measurements alongside
-  contributions
-- Training pipeline (70 s, reproducible), 20/20 tests, lint + build clean
-- 6-page technical documentation (attached)
-
-## Run it
-
-```powershell
-git clone https://github.com/vaibhavitej-a11y/CardioScope.git
-cd CardioScope
-python -m venv .venv && .venv\Scripts\activate
-pip install -r requirements.txt
-cd web && npm install && cd ..
-python ml/src/train.py        # train all 4 models (~70 s)
-npm --prefix web run dev      # → http://localhost:5173
-```
-
-## Demo video
-
-[https://youtu.be/](placeholder) — 3–10 min walkthrough (English).
-
-## Team
-
-4 members — names as registered on Devpost.
-
-> For decision support / educational purposes only — not a substitute for
-> formal diagnostic imaging.
+Submission editor notes: enter the real demo-video URL in Devpost's video field
+and add all four registered team members. Those details are intentionally not
+invented here. See checklist.md before publishing.

@@ -1,14 +1,11 @@
 /**
  * Shared physical materials for the hero organ.
  *
- * The look targets the reference (BioDigital / MSD-style medical render):
- * wet translucent tissue, a warm fresnel rim so the silhouette glows against
- * the backdrop, clearcoat speculars that read as serous fluid, and red
- * attenuation so light going through the muscle comes out flesh-coloured
- * instead of grey.
+ * Deterministic muscle fibers, restrained clearcoat, and a soft warm rim.
+ * Opaque physical materials avoid an expensive transmission render pass.
  *
  * Fresnel is injected with onBeforeCompile — no custom ShaderMaterial, so
- * lighting / transmission / clearcoat keep working exactly as three intends.
+ * lighting and clearcoat keep working exactly as three intends.
  */
 
 import * as THREE from 'three'
@@ -22,35 +19,33 @@ const RIM = '#ff9b7a'
  * up the way real serosa does. Pure canvas noise: no network, per Track A.
  */
 function createTissueField(): THREE.CanvasTexture {
-  const size = 256
+  const size = 512
   const canvas = document.createElement('canvas')
   canvas.width = size
   canvas.height = size
   const ctx = canvas.getContext('2d')
   if (ctx) {
-    // ~0.65 grey → with material.roughness 0.85 lands near 0.55 average.
-    ctx.fillStyle = '#a6a6a6'
-    ctx.fillRect(0, 0, size, size)
-    for (let i = 0; i < 170; i++) {
-      const x = Math.random() * size
-      const y = Math.random() * size
-      const r = 7 + Math.random() * 36
-      const wet = Math.random() > 0.45
-      const tone = wet ? 255 : 0
-      const alpha = 0.05 + Math.random() * 0.13
-      const g = ctx.createRadialGradient(x, y, 0, x, y, r)
-      g.addColorStop(0, `rgba(${tone},${tone},${tone},${alpha})`)
-      g.addColorStop(1, `rgba(${tone},${tone},${tone},0)`)
-      ctx.fillStyle = g
-      ctx.beginPath()
-      ctx.arc(x, y, r, 0, Math.PI * 2)
-      ctx.fill()
+    const field = ctx.createImageData(size, size)
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        // Periodic, deterministic fibers; the seam meets cleanly at u=0/1.
+        const u = x / size * Math.PI * 2
+        const v = y / size * Math.PI * 2
+        const fiber = Math.sin(u * 54 + v * 13 + 3 * Math.sin(v * 2))
+        const fine = Math.sin(u * 117 - v * 47) * Math.cos(v * 81 + u * 9)
+        const patches = Math.sin(u * 5 + v * 3) * Math.cos(v * 7 - u * 2)
+        const tone = 170 + fiber * 15 + fine * 7 + patches * 24
+        const i = (y * size + x) * 4
+        field.data[i] = field.data[i + 1] = field.data[i + 2] = tone
+        field.data[i + 3] = 255
+      }
     }
+    ctx.putImageData(field, 0, 0)
   }
   const texture = new THREE.CanvasTexture(canvas)
   texture.wrapS = THREE.RepeatWrapping
   texture.wrapT = THREE.RepeatWrapping
-  texture.repeat.set(3, 3)
+  texture.repeat.set(1, 1)
   return texture
 }
 
@@ -82,32 +77,27 @@ uniform float uRimStrength;
 }
 
 /**
- * Myocardium — wet, faintly translucent, glossy where fluid catches light.
- * transmission + red attenuation gives the edge a subsurface glow that a
- * plain opaque surface can never fake.
+ * Myocardium with surface fibers and a restrained rim to suggest soft tissue.
  */
 export function createMuscleMaterial(): THREE.MeshPhysicalMaterial {
   const tissue = createTissueField()
   const material = new THREE.MeshPhysicalMaterial({
-    color: '#a75f54',
-    roughness: 0.85,
+    color: '#984f4d',
+    vertexColors: true,
+    roughness: 0.8,
     roughnessMap: tissue,
     bumpMap: tissue,
-    bumpScale: 0.018,
+    bumpScale: 0.017,
     metalness: 0,
-    clearcoat: 1,
-    clearcoatRoughness: 0.26,
-    sheen: 0.8,
+    clearcoat: 0.32,
+    clearcoatRoughness: 0.45,
+    sheen: 0.35,
     sheenColor: new THREE.Color('#e08a72'),
     sheenRoughness: 0.5,
-    transmission: 0.24,
-    thickness: 1.5,
-    ior: 1.38,
-    attenuationColor: new THREE.Color('#c93f31'),
-    attenuationDistance: 0.85,
-    envMapIntensity: 1.15,
+    transmission: 0,
+    envMapIntensity: 0.65,
   })
-  injectFresnelRim(material, 0.55)
+  injectFresnelRim(material, 0.12)
   // Owned by the material: disposed together whenever the organ tears down.
   material.userData.tissue = tissue
   material.addEventListener('dispose', () => tissue.dispose())
@@ -120,7 +110,7 @@ export function createSulcusMaterial(): THREE.MeshPhysicalMaterial {
     color: '#6e3a33',
     roughness: 0.55,
     metalness: 0,
-    clearcoat: 0.9,
+    clearcoat: 0.3,
     clearcoatRoughness: 0.35,
     envMapIntensity: 0.9,
   })
@@ -135,13 +125,13 @@ export function createSulcusMaterial(): THREE.MeshPhysicalMaterial {
 export function createVesselWallMaterial(color: string): THREE.MeshPhysicalMaterial {
   const material = new THREE.MeshPhysicalMaterial({
     color,
-    roughness: 0.38,
+    roughness: 0.58,
     metalness: 0,
-    clearcoat: 1,
-    clearcoatRoughness: 0.22,
+    clearcoat: 0.35,
+    clearcoatRoughness: 0.4,
     sheen: 0.4,
     sheenColor: new THREE.Color('#ffffff'),
-    envMapIntensity: 1.25,
+    envMapIntensity: 0.65,
   })
   injectFresnelRim(material, 0.12)
   return material

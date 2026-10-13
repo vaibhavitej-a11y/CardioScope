@@ -1,215 +1,223 @@
-# CardioScope — Interactive 3D Cardiovascular Risk Visualisation
+# CardioScope
 
-**Track A · Multimodal AI Hackathon 2026 · Team of 4 (M1–M4)**
-Source: <https://github.com/vaibhavitej-a11y/CardioScope>
+Track A | Multimodal AI Hackathon 2026 | Technical report
 
-> **For decision support / educational purposes only — not a substitute for
-> formal diagnostic imaging.**
+Source: https://github.com/vaibhavitej-a11y/CardioScope
 
-## 1. Overview
+## 1. Product overview and architecture
 
-CardioScope predicts **overall CAD status** and **predicted stenosis
-probability** for the three major coronary arteries (LAD, LCX, RCA) from 54
-routine clinical features, then maps those predictions onto an interactive 3D
-heart: each vessel is colour-ramped by its predicted risk, selectable for a
-detail view, and explained with SHAP contributions. The system answers two
-questions a table of numbers cannot: *how sick is this patient* and *where is
-the risk* — in one screen.
+CardioScope is a local research prototype that estimates coronary artery disease
+(CAD) and vessel-specific stenosis probabilities from 54 clinical features.
+An interactive 3D heart connects those estimates to anatomical context, while
+SHAP explanations show the factors behind each model output.
 
-**Architecture.** Three layers, one repo:
+**For decision support / educational purposes only — not a substitute for formal diagnostic imaging.**
 
-| Layer | Tech | Role |
-|---|---|---|
-| `ml/` | Python, scikit-learn, LightGBM/XGBoost/CatBoost, SHAP | 4 binary classifiers + tests |
-| `api/` | FastAPI (connected; port 8001) | `POST /api/predict` |
-| `web/` | React 19, TypeScript, Vite, React Three Fiber 9, Zustand, Tailwind 4 | form, 3D viewer, dashboard |
+| Layer | Technology | Responsibility |
+| --- | --- | --- |
+| Frontend | React 19, TypeScript, Vite 8, Tailwind 4, Zustand | Patient form, scores, explanations, print export |
+| Anatomy | Three.js, React Three Fiber, Drei | Procedural heart, coronary vessels, labels, camera controls |
+| API | FastAPI, Pydantic | Validate 54 inputs; serve four model probabilities and explanations |
+| Models | CatBoost, scikit-learn, SHAP | Four independent binary classifiers and probability-unit attributions |
 
-Data flow: *patient form → Zustand store → typed API client → (model
-response) → dashboard + 3D colouring*. The client also has a documented mock
-mode that returns a canned worked example through the identical types, so
-the UI can run offline for demos — the shipped flag talks to the live
-service.
+Data flows from the controlled form through POST /api/predict to the stored
+pipelines, then back to the dashboard and anatomical viewer. Vite proxies /api
+to FastAPI on port 8001. No database, API keys, cloud inference, or downloaded
+anatomical assets are needed during normal use.
 
-## 2. Dataset & preprocessing
+![CardioScope workspace with live research predictions](../screenshots/workspace.png)
 
-| | |
-|---|---|
-| Source | UCI ML Repository id **411**, *Extension of Z-Alizadeh Sani* |
-| DOI / licence | 10.24432/C5461K · CC BY 4.0 (unmodified file ships in repo) |
-| Size | **303 patients × 59 columns, 0 missing values** |
-| Targets | `Cath` (CAD), `LAD`, `LCX`, `RCA` — binary labels |
+Figure 1. Patient inputs, interactive anatomy, predicted probabilities, and
+feature contributions in one workspace. The illustrated heart is not a patient scan.
 
-`ml/src/data.py` is the single entry point:
+## 2. Dataset and preprocessing
 
-1. **Typed columns.** Numeric vs categorical is decided by explicit lists, not
-   dtype guessing (`Region RWMA` is forced categorical — it is a region
-   *label*, never a coordinate).
-2. **Constant columns dropped.** `Exertional CP` is identical for all 303
-   patients → zero information. 59 − 4 targets − 1 constant = **54 model
-   features** — the same 54 shown in the UI form.
-3. **Targets mapped** to 1/0 with unknown-label guards (any unexpected string
-   fails loudly).
-4. **Target-leakage guard.** `Cath`, `LAD`, `LCX`, `RCA` are *excluded from
-   every model input* — they are the answers (what the catheter found), not
-   features. Enforced by `ml/tests/test_leakage.py`; UCI's own dataset note
-   requires the same.
+The included public workbook is the UCI Extension of Z-Alizadeh Sani dataset
+(repository ID 411; DOI 10.24432/C5461K), attributed to Z-Alizadeh Sani et al.
+under CC BY 4.0. The original workbook is stored unmodified in ml/data/raw/.
 
-**Preprocessing pipeline** (inside each model's `Pipeline`, so train/serve
-cannot diverge): numeric → median impute → standard scale (logistic baseline);
-categorical → most-frequent impute → one-hot with `handle_unknown="ignore"`.
+| Property | Recorded value |
+| --- | --- |
+| Records | 303 patients |
+| Original columns | 59 |
+| Targets | Cath (overall CAD), LAD, LCX, RCA |
+| Model inputs | 54, after excluding four targets and one constant |
+| Missing values in the included workbook | 0 |
 
-## 3. Model architecture & training
+The clinical inputs cover demographics, risk factors, comorbidities,
+examination, symptoms, ECG, laboratory measurements, and echocardiography.
+Exertional CP is constant in the source dataset and is excluded. Cath, LAD,
+LCX, and RCA are answers, never predictor inputs. Tests enforce this exclusion
+and the API rejects unexpected fields.
 
-Four **independent binary classifiers**, one shared preprocessing pattern
-(decision D6):
+ml/src/data.py defines explicit numeric and categorical columns instead of
+guessing from storage types. Region RWMA is treated as a categorical finding,
+not an anatomical coordinate. Targets are mapped to binary labels with guards
+against unknown values.
 
-- **Candidates:** LightGBM, XGBoost, CatBoost (`class_weight` /
-  `auto_class_weights="balanced"` — n = 303, class imbalance handled by
-  weights, not resampling) + a **logistic-regression baseline** reported for
-  context.
-- **Selection:** best mean **ROC-AUC** on **5-fold stratified CV**, seed 42.
-- **No held-out test set** — 303 rows is too few to waste; every metric is
-  either mean ± std over the 5 folds or pooled out-of-fold (each patient
-  predicted exactly once).
-- **Operating point:** each outer training split picks its threshold on an
-  inner 3-fold CV (maximising F1) so the validation fold never tunes its own
-cut-off. Production threshold = max-F1 on pooled OOF (e.g. Cath 0.27, LAD
-0.35, LCX 0.25, RCA 0.08). Tuning **raises recall for screening** —
-  recorded separately, never mixed with default-0.5 numbers.
-- **Explainability:** SHAP `TreeExplainer` per selected tree model
-  (requirement 3b allows SHAP *or* LIME; decision D5: SHAP only). Model
-  selection is restricted to explainers that report in **probability
-  units** — models that fall back to raw/log-odds contributions are
-  excluded, so all four dashboards are directly comparable.
-- **Artifacts:** joblib bundle per target + `metrics.json` + SHAP report,
-  rewritten by `python ml/src/train.py` in ~70 s, versioned with git commit.
+Each trained model includes its preprocessing pipeline. Numeric inputs receive
+median imputation and scaling; categorical inputs receive most-frequent
+imputation and one-hot encoding with unknown-category handling. Fitting
+preprocessing inside the cross-validation pipeline prevents validation folds
+from influencing their own transformations.
 
-## 4. Evaluation results
+The schema emitted by training, the Pydantic API fields, and the frontend
+catalogue must contain the same 54 inputs. Cross-artifact tests check their
+names and numeric/categorical types. The original dataset hash is recorded in
+ml/artifacts/manifest.json for provenance.
 
-5-fold stratified CV, seed 42, pooled out-of-fold, 0.5 threshold unless noted:
+## 3. Models, validation, and explainability
 
-| Target (model) | ROC-AUC (CV mean ± sd) | OOF accuracy | OOF precision | OOF recall | OOF F1 | Recall @ tuned cut-off |
-|---|---|---|---|---|---|---|
-| **Cath / CAD** (CatBoost) | **0.913 ± 0.052** | 0.855 | 0.887 | 0.912 | **0.900** | 0.949 |
-| **LAD** (CatBoost) | **0.847 ± 0.047** | 0.782 | 0.797 | 0.842 | **0.819** | 0.904 |
-| **LCX** (CatBoost) | 0.736 ± 0.076 | 0.710 | 0.640 | 0.597 | **0.617** | 0.815 |
-| **RCA** (CatBoost) | 0.704 ± 0.050 | 0.660 | 0.558 | 0.465 | 0.507 | 0.860 |
+Four independent classifiers estimate CAD, LAD, LCX, and RCA outcomes. The
+training pipeline evaluates LightGBM, XGBoost, and CatBoost, with logistic
+regression reported as a baseline. The shipped models are all CatBoost.
+Class weighting addresses the source dataset's imbalance.
 
-Context: the logistic-regression baseline reaches ROC-AUC 0.925 on Cath —
-slightly above CatBoost's 0.913 within noise — but tree models were kept
-because the interpretability requirement is served by `TreeExplainer`.
-**LCX and RCA are the genuinely hard targets** (fewer positives, subtler
-signal); we report them at face value rather than hiding them behind
-threshold tricks. Full per-fold numbers: `ml/artifacts/metrics.json`.
+Selection uses five stratified cross-validation folds with seed 42.
+Preprocessing is fitted inside each fold. There is no independent held-out
+test set: metrics summarize cross-validation on the 303-record research dataset.
 
-## 5. Interactive 3D pipeline
+| Target | ROC-AUC | F1 | Precision | Recall | Accuracy |
+| --- | --- | --- | --- | --- | --- |
+| CAD / Cath | 0.912 | 0.900 | 0.887 | 0.912 | 0.855 |
+| LAD | 0.849 | 0.819 | 0.797 | 0.842 | 0.782 |
+| LCX | 0.739 | 0.617 | 0.640 | 0.597 | 0.710 |
+| RCA | 0.703 | 0.507 | 0.558 | 0.465 | 0.660 |
 
-Requirement 2a allows Three.js / R3F / VTK.js and *permits* open-source meshes
-without requiring them; decision D1 kept the anatomy **fully procedural** —
-zero downloaded assets, so the viewer works offline and stays under the
-no-GPU budget.
+These are the recorded pooled out-of-fold results at the default operating
+point. Fold statistics and separately reported tuned operating points are
+available in ml/artifacts/metrics.json. Threshold tuning uses an inner
+cross-validation procedure within outer training splits; the validation fold
+does not choose its own threshold.
 
-- **Geometry (`web/src/vessels.ts`, `Heart.tsx`).** The heart is one lathe
-  profile (96 segments, two-octave surface grain) with a shared tilt applied
-  to every child so muscle, coronaries and labels can never drift apart.
-  LAD/LCX/RCA are tube geometries swept along anatomically placed curves that
-  ride the sulcus grooves; nine clickable node markers satisfy the literal
-  "coronary artery nodes" wording (decision D3); auricles, aorta, pulmonary
-  trunk, venae cavae, the great cardiac vein and coronary sinus complete the
-  silhouette.
-- **Materials (`materials.ts`).** Shared physical materials with a fresnel
-  rim injected via `onBeforeCompile`, procedural roughness + bump tissue map,
-  clearcoat + emissive glow on the vessels; an IBL environment built from
-  local lightformers (nothing fetched), warm back-rim key light, a deep
-  midnight radial backdrop, bloom + vignette in a lightweight post-process
-  chain.
-- **Motion.** A systole contraction (radial bulge ≈ 2× long-axis, torsional
-  sway) runs in one `useFrame`; toggleable from the UI. Travelling light
-  bands scroll base-to-apex along LAD/LCX/RCA and the venous return — an
-  emissive pulse injected into the physical shader, so blood visibly flows
-  without particles.
-- **Risk mapping.** Each vessel's colour ramp and node colour are driven by
-  the predicted probability shared through the store — green-amber-red is
-  reserved for risk only. Labels (e.g. "LAD 94%") render as DOM pills anchored
-  to 3D positions via a portal.
-- **Interaction.** Orbit, zoom, click tube/node to select (second click
-  clears), four camera presets (Anterior/Posterior/Basal/Apical), and one
-  detail panel scoped to the selection — what the vessel supplies plus its
-  SHAP drivers next to the patient's measurements, shown once.
-- **Performance.** DPR capped at 1.75, low-poly geometry, single render loop,
-  no external textures — responsive in a modern browser without a dedicated
-  GPU.
+SHAP TreeExplainer attributes each prediction in probability units. One-hot
+contributions are aggregated back to the original 54 clinical feature names.
+Model selection excludes candidates that cannot support the required
+interventional_probability explanations in the recorded environment; the
+manifest records those capability checks.
 
-![CardioScope running: patient form, interactive 3D heart with vessel risk labels, prediction dashboard](figures/app-ui.jpg)
+The dashboard displays the top five signed contributions with the assessed
+measurements. Positive values raise the model output; negative values lower it.
+Their displayed sum excludes the model baseline and undisplayed features.
+Attribution is not causation. Tests check consistent SHAP units and the
+prediction/explanation contract across all four saved model bundles.
 
-*Figure 1 — CardioScope in use: the 54-feature patient form (left), the
-interactive 3D heart with vessel risk labels, selection and camera presets
-(centre), and the prediction dashboard with CAD status, per-vessel predicted
-stenosis probability and SHAP explanation (right).*
+## 4. Anatomical visualization and interaction
 
-## 6. Clinical dashboard & explanation
+The heart is built procedurally: a warped ventricular surface, atrial
+appendages, great vessels with recessed openings, cardiac veins, and tapered
+coronary arteries with illustrative side branches. Muscle texture and lighting
+are generated locally; no model download or external texture is required.
 
-Beside the canvas (requirement 3): a CAD status card with predicted
-probability as a donut gauge, three vessel cards (LAD/LCX/RCA with predicted
-stenosis probability and band), and a single explanation panel — "why this
-prediction" — where each top contribution appears once, pairing the feature
-with the patient's measurement, its signed contribution and a direction bar.
-Selecting a vessel in 3D reframes that same panel to the vessel (what it
-supplies plus its drivers); the probabilities stay in the cards, never
-repeated. Missing inputs display "—" rather than invented values.
-Disclaimers appear as a startup modal, a persistent banner and a page footer
-(requirement 5).
+Vessel routes and surface geometry share the same shape functions so the
+arteries follow the muscle. A subtle heartbeat moves the organ and its
+attachments together. Animated light bands suggest flow without an expensive
+fullscreen postprocessing pass.
 
-## 7. Getting started
+LAD, LCX, and RCA use shared identifiers throughout the response types, store,
+cards, labels, tubes, and selectable nodes. A new assessment updates their
+probability colors together. Selecting any vessel representation scopes the
+explanation panel to that vessel; selecting it again clears the selection.
+
+| Interaction | Behavior |
+| --- | --- |
+| Drag / scroll | Orbit the heart / change zoom |
+| Camera presets | Anterior, posterior, basal, and apical views |
+| Anatomical compass | L/R, S/I, and A/P project from patient-space axes using the current camera orientation |
+| Labels / risk map | Toggle vessel labels or switch to neutral anatomy colors |
+| Expanded view | Focus on the heart; Escape returns to the workspace |
+| Optional sound | Explicitly enable a synthesized illustrative heartbeat |
+
+Green, amber, and red communicate lower, uncertain, and higher vessel
+probability bands. These display bands are not model operating thresholds or
+measured stenosis severity. Overall CAD uses likelihood wording rather than
+calling the entire heart stenotic.
+
+Device pixel ratio is capped at 1.5. Continuous rendering pauses when the
+viewer is outside the viewport; reduced-motion preferences stop automatic
+animation. The viewer has a fallback when WebGL is unavailable. Keyboard
+focus is contained in the native welcome dialog and expanded viewer.
+
+The anatomy is schematic. The dataset has no lesion coordinates, so colors
+apply to vessels and their illustrative branches, not to localized plaque.
+
+## 5. Reproducing the application
+
+Use Node.js 24 LTS and Python 3.13. The committed model manifest records
+Python 3.13.14. Exact Python requirements and project transitive dependencies
+are pinned in constraints.txt; frontend dependencies use package-lock.json.
+
+From the repository root, install once on Windows:
 
 ```powershell
-git clone https://github.com/vaibhavitej-a11y/CardioScope.git
-cd CardioScope
 python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-cd web && npm install && cd ..
-
-python ml/src/train.py                  # trains 4 models, writes ml/artifacts/
-npm --prefix web run dev                # frontend → http://localhost:5173
-cd api && uvicorn app.main:app --reload --port 8001   # → :8001/docs
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+npm.cmd --prefix web ci
 ```
 
-Prerequisites: Python ≥ 3.11, Node ≥ 20.19, Git. Verification:
+Open two terminals. Terminal A starts the API:
 
 ```powershell
-npm --prefix web run lint        # oxlint — clean
-npm --prefix web run build       # tsc -b && vite build — passing
-python -m pytest                 # ml + api — 38/38
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir api --port 8001
 ```
 
-## 8. Safety, honesty & reproducibility
+Terminal B starts the frontend:
 
-- Disclaimer text is enforced in one place (`api/app/constants.py`) and
-  rendered in modal + banner + footer.
-- We only claim **predicted probabilities**; the dataset contains no lesion
-  coordinates, so the UI never presents pixel-level lesion mapping — vessel
-  granularity is the resolution the data supports (decision D4).
-- Leakage is blocked by tests, not conventions; seeds are fixed (42); model
-  selection, thresholds and variance are all recorded in machine-readable
-  artifacts; the raw dataset file is committed unmodified with CC BY 4.0
-  attribution.
+```powershell
+npm.cmd --prefix web run dev
+```
 
-## 9. Limitations & future work
+Open the URL Vite prints, normally http://localhost:5173. Wait for API startup
+to complete, then confirm Model connected in the header. The optional
+start-api.ps1 helper locates a runtime matching the saved model versions.
+On macOS/Linux, use .venv/bin/python and npm; see the root README for commands.
 
-- **LCX / RCA discrimination is modest** (ROC-AUC ≈ 0.74 / 0.70). These are
-  few-positive, subtle-signal targets in a 303-row dataset; we report them at
-  face value. More data or richer inputs would help more than tuning.
-- **The prediction service is local-only** (FastAPI, `api/`); it is wired to
-  the UI in development via the Vite proxy, and the typed mock client
-  remains as a one-flag offline fallback (decision D8).
-- **Local-only execution** (decision D8) — no hosted deployment; the Devpost
-  requirement is a public repo, not a live URL.
-- **The anatomy is schematic**, not patient-specific morphology, and the
-  dataset carries no lesion coordinates — so predictions map to *vessels*, not
-  to positions along a vessel (decision D4).
-- **Future work:** calibration curves, prospective validation, imaging
-  modalities as inputs, and torso context (decision D2 — stretch).
+GET /api/health verifies that all four models have loaded. The same request
+through the frontend verifies the proxy. POST /api/predict accepts exactly the
+54 allowed inputs and returns CAD/vessel probabilities plus SHAP breakdowns.
 
-*CardioScope — decision support and education only; not a substitute for
-formal diagnostic imaging.*
+Training is optional: the committed artifacts already run the application.
+To regenerate them, stop the API, run ml/src/train.py with the project Python,
+review the changed artifacts, rerun tests, and restart the API.
+
+Production-build review uses npm.cmd --prefix web run build followed by
+npm.cmd --prefix web run preview. Keep the API running; preview also proxies
+/api to port 8001. A public deployment would need an equivalent backend route.
+
+## 6. Verification, safety, and limitations
+
+The repository includes Python checks covering API responses, input
+boundaries, feature schema/disclaimer parity, leakage, trained bundles, and
+SHAP units, and dependency pins against the saved model manifest. Frontend regression tests cover probability precision, rounding
+boundaries, and separate CAD/vessel labels. Type checking and linting are part
+of the submission checks. Live-browser checks exercise the real API, vessel
+selection, and explanation updates.
+
+```powershell
+npm.cmd --prefix web test
+npm.cmd --prefix web run lint
+npm.cmd --prefix web run build
+.\.venv\Scripts\python.exe -m pytest api/tests ml/tests -q
+```
+
+Probabilities show one decimal place: 99.68% displays as 99.7%, not 100%.
+Extremely small or large values display as <0.1% or >99.9%. The prefilled
+profile includes hypertension and typical chest pain; cohort defaults are
+not a healthy reference case. Editing fields marks results stale until the
+next assessment; explanations retain their original measured inputs.
+
+If the API is unavailable, an explicitly labeled sample assessment offers a
+canned preview. It does not calculate new predictions from edited inputs.
+Research disclaimers are visible in the welcome dialog, banner, and footer.
+
+**Limitations:** the dataset is small, LCX/RCA discrimination is weaker than
+CAD/LAD, and cross-validation does not establish prospective clinical utility
+or calibrated certainty. Anatomy is illustrative and predictions are
+vessel-level. No hosted deployment or recorded demo is claimed by this report.
+
+Future work includes calibration assessment, larger external datasets,
+prospective validation, and imaging modalities. Public repository visibility,
+the English-language 3–10 minute YouTube demonstration, and team registration
+must be completed separately before submitting on Devpost.
+
+For decision support / educational purposes only — not a substitute for formal diagnostic imaging.

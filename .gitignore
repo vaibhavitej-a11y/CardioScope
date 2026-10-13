@@ -4,6 +4,10 @@ __pycache__/
 .venv/
 venv/
 *.egg-info/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
 # data
 # ml/data/raw/ ships ONE file on purpose: the public UCI 411 dataset
@@ -20,6 +24,14 @@ ml/data/processed/*
 node_modules/
 dist/
 .vite/
+coverage/
+*.tsbuildinfo
+
+# Local configuration; sample environment files may be committed.
+.env
+.env.*
+!.env.example
+!.env.*.example
 
 # misc
 *.log

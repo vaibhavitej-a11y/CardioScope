@@ -18,9 +18,11 @@ export function DisclaimerBanner() {
   return (
     <div
       role="note"
-      className="border-b border-risk-high/40 bg-risk-high/15 px-4 py-2 text-center text-xs font-semibold text-risk-high"
+      className="disclaimer-banner"
     >
-      {DISCLAIMER_TEXT}
+      <span className="disclaimer-symbol" aria-hidden="true">i</span>
+      <span>{DISCLAIMER_TEXT}</span>
+      <span className="disclaimer-label">RESEARCH USE</span>
     </div>
   )
 }

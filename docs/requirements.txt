@@ -1,0 +1,5 @@
+# Optional dependencies for regenerating the six-page submission PDF.
+-c ../constraints.txt
+reportlab==5.0.1
+pillow==12.3.0
+charset-normalizer==3.4.9

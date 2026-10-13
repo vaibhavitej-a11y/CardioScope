@@ -19,7 +19,7 @@ interface VesselNodeProps {
   onSelect: (vessel: VesselId) => void
 }
 
-const RADIUS = 0.05
+const RADIUS = 0.035
 
 export function VesselNode({
   vessel,
@@ -51,7 +51,7 @@ export function VesselNode({
       <meshPhysicalMaterial
         color={color}
         emissive={color}
-        emissiveIntensity={selected ? 1 : hovered ? 0.65 : 0.45}
+        emissiveIntensity={selected ? 0.5 : hovered ? 0.3 : 0.14}
         roughness={0.25}
         metalness={0}
         clearcoat={1}

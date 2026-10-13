@@ -104,7 +104,12 @@ export function riskColor(probability: number): string {
  * Display label for a band. Wording is locked by the project's language
  * rules: these describe a *prediction*, never a finding.
  */
-export function riskLabel(band: RiskBand): string {
+export function riskLabel(band: RiskBand, scope: 'vessel' | 'cad' = 'vessel'): string {
+  if (scope === 'cad') {
+    if (band === 'low') return 'Lower CAD likelihood'
+    if (band === 'high') return 'Higher CAD likelihood'
+    return 'Uncertain CAD likelihood'
+  }
   switch (band) {
     case 'low':
       return 'Predicted normal'
@@ -140,7 +145,8 @@ export function profileRadius(y: number): number {
   const yy = Math.min(1, Math.max(-1, y))
   const width = 1 - yy * yy
   if (width <= 0) return 0
-  return 0.8 * Math.sqrt(width) * (1 + 0.35 * yy)
+  const t = (yy + 1) / 2
+  return 0.87 * Math.pow(Math.sin(Math.PI * t), 0.7) * (0.68 + 0.48 * t)
 }
 
 /**
@@ -176,7 +182,7 @@ export const HEART_BOTTOM = -1.0
 export function apexOffset(y: number): readonly [number, number] {
   const t = (HEART_TOP - y) / (HEART_TOP - HEART_BOTTOM)
   const s = t * t
-  return [0.2 * s, 0.14 * s]
+  return [0.32 * s, 0.16 * s]
 }
 
 /** Front-to-back flattening — cross-sections are ellipses, not circles. */
@@ -221,7 +227,7 @@ export function warpPoint(
   // made. cos(2*phi) is allowed to go negative: it pulls the base in at the
   // front and back so the lobes read as two distinct bumps on the silhouette
   // instead of one flared ring — a flared ring is what looked like a cup.
-  const atria = 0.42 * smoothstep(0.45, 0.92, y) * Math.cos(2 * phi)
+  const atria = 0.26 * smoothstep(0.5, 0.95, y) * Math.cos(2 * phi)
   r *= 1 + atria
 
   // Atrioventricular (coronary) sulcus — the waist between the atrial crown
@@ -235,13 +241,13 @@ export function warpPoint(
   // bulges toward the patient's left, while the right side stays flatter.
   // A lathe is symmetric by construction, so conical leaning has to be
   // reintroduced here — it is what turns an egg into a heart.
-  const ventricle = 0.1 * smoothstep(0.7, -0.1, y)
+  const ventricle = 0.19 * smoothstep(0.7, -0.1, y)
   r *= 1 + ventricle * Math.cos(phi)
 
   // Anterior interventricular groove — a shallow channel the LAD seats into.
   // Opens just below the base and fades out short of the apex.
   const groove =
-    0.2 * smoothstep(0.8, 0.55, y) * smoothstep(-0.95, -0.7, y)
+    0.12 * smoothstep(0.8, 0.55, y) * smoothstep(-0.95, -0.7, y)
   const foreAft = shortestAngle(phi - ANTERIOR)
   r *= 1 - groove * Math.exp(-(foreAft * foreAft) / (2 * 0.34 * 0.34))
 
@@ -323,6 +329,26 @@ export const VESSEL_POINTS: Readonly<Record<VesselId, [number, number, number][]
  */
 export const NODE_FRACTIONS: readonly number[] = [0.16, 0.5, 0.84]
 
+/** Illustrative side branches inherit their parent vessel's prediction;
+ * their locations are anatomy context, not patient-specific lesion maps. */
+export const CORONARY_BRANCHES: Readonly<Record<VesselId, readonly (readonly [number, number])[]>> = {
+  LAD: [[0.62, 76], [0.28, 80], [-0.08, 85], [-0.39, 89]],
+  LCX: [[0.83, 15], [0.69, -31], [0.51, -69]],
+  RCA: [[0.86, 150], [0.75, 200], [0.55, 246]],
+}
+
+export function branchPoints(vessel: VesselId, index: number): [number, number, number][] {
+  const [startY, startPhi] = CORONARY_BRANCHES[vessel][index]
+  const drop = vessel === 'LAD' ? 0.38 : 0.72
+  const sweep = vessel === 'LAD' ? -40 : vessel === 'RCA' ? -30 : 25
+  return Array.from({ length: 25 }, (_, i) => {
+    const t = i / 24
+    const y = Math.max(-0.94, startY - drop * t)
+    const phi = startPhi + sweep * Math.sin(t * Math.PI / 2)
+    return surfacePoint(y, phi * Math.PI / 180, 1.023)
+  })
+}
+
 /**
  * Great vessels — context only, never risk-coloured.
  *
@@ -338,12 +364,11 @@ export const NODE_FRACTIONS: readonly number[] = [0.16, 0.5, 0.84]
  *    apex (-1) to base (+1), z is anterior (+z faces the viewer);
  *  - every start point is buried inside the lathe body, so tubes read as
  *    growing out of the heart instead of floating above it;
- *  - colour encodes oxygenation with two steel tones — NOT the textbook
- *    red/blue, because red is reserved for predicted risk in this UI
- *    (see index.css and RISK_COLORS).
+ *  - muted tissue and blue-gray materials give context; only the labeled
+ *    LAD/LCX/RCA vessels use the dynamic probability palette.
  */
-const ARTERIAL = '#a8b9c9'
-const VENOUS = '#7b93ab'
+const ARTERIAL = '#9f7169'
+const VENOUS = '#708c9b'
 
 export interface GreatVessel {
   readonly name: string
@@ -359,46 +384,46 @@ export const GREAT_VESSELS: readonly GreatVessel[] = [
     // an anterior view.
     name: 'Aorta',
     points: [
-      [-0.02, 0.82, 0.14],
-      [0.0, 1.1, 0.14],
-      [0.06, 1.36, 0.08],
-      [0.16, 1.55, -0.06],
-      [0.22, 1.63, -0.24],
-      [0.18, 1.6, -0.44],
-      [0.1, 1.46, -0.58],
-      [0.06, 1.28, -0.62],
+      [-0.19, 0.66, 0.08],
+      [-0.2, 1.03, 0.1],
+      [-0.11, 1.37, 0.04],
+      [0.08, 1.57, -0.04],
+      [0.34, 1.59, -0.13],
+      [0.55, 1.4, -0.26],
+      [0.61, 1.12, -0.4],
+      [0.6, 0.88, -0.46],
     ],
-    radius: 0.115,
+    radius: 0.165,
     color: ARTERIAL,
   },
   {
     name: 'Brachiocephalic trunk',
     points: [
-      [0.1, 1.45, 0.01],
-      [0.06, 1.7, 0.0],
-      [-0.02, 1.94, -0.02],
+      [-0.05, 1.48, 0.01],
+      [-0.11, 1.7, 0.02],
+      [-0.18, 1.88, 0.03],
     ],
-    radius: 0.05,
+    radius: 0.074,
     color: ARTERIAL,
   },
   {
     name: 'Left common carotid',
     points: [
-      [0.19, 1.6, -0.14],
-      [0.18, 1.86, -0.16],
-      [0.17, 2.06, -0.18],
+      [0.22, 1.6, -0.09],
+      [0.22, 1.8, -0.1],
+      [0.2, 1.98, -0.12],
     ],
-    radius: 0.045,
+    radius: 0.062,
     color: ARTERIAL,
   },
   {
     name: 'Left subclavian artery',
     points: [
-      [0.19, 1.62, -0.36],
-      [0.24, 1.84, -0.42],
-      [0.32, 1.98, -0.5],
+      [0.43, 1.54, -0.19],
+      [0.54, 1.75, -0.22],
+      [0.63, 1.88, -0.26],
     ],
-    radius: 0.045,
+    radius: 0.066,
     color: ARTERIAL,
   },
   {
@@ -406,11 +431,11 @@ export const GREAT_VESSELS: readonly GreatVessel[] = [
     // overlaps the ascending aorta — that occlusion is correct, not a bug.
     name: 'Pulmonary trunk',
     points: [
-      [0.14, 0.84, 0.26],
-      [0.16, 1.1, 0.26],
-      [0.14, 1.3, 0.18],
+      [0.08, 0.63, 0.37],
+      [0.1, 1.04, 0.38],
+      [0.14, 1.29, 0.23],
     ],
-    radius: 0.1,
+    radius: 0.15,
     color: VENOUS,
   },
   {
@@ -420,7 +445,7 @@ export const GREAT_VESSELS: readonly GreatVessel[] = [
       [0.34, 1.34, 0.06],
       [0.52, 1.3, -0.1],
     ],
-    radius: 0.075,
+    radius: 0.105,
     color: VENOUS,
   },
   {
@@ -430,7 +455,7 @@ export const GREAT_VESSELS: readonly GreatVessel[] = [
       [-0.1, 1.33, 0.06],
       [-0.34, 1.28, -0.08],
     ],
-    radius: 0.075,
+    radius: 0.105,
     color: VENOUS,
   },
   {
@@ -440,7 +465,7 @@ export const GREAT_VESSELS: readonly GreatVessel[] = [
       [-0.5, 1.24, 0.03],
       [-0.52, 1.62, 0.02],
     ],
-    radius: 0.075,
+    radius: 0.13,
     color: VENOUS,
   },
   {
@@ -455,7 +480,7 @@ export const GREAT_VESSELS: readonly GreatVessel[] = [
       [-0.85, 0.66, -0.12],
       [-0.66, 0.84, -0.08],
     ],
-    radius: 0.075,
+    radius: 0.105,
     color: VENOUS,
   },
   ...(['L', 'R'] as const).flatMap((side) =>
@@ -490,14 +515,14 @@ export const AURICLES: readonly {
 }[] = [
   {
     name: 'Right auricle',
-    position: [-0.4, 0.95, 0.14],
-    scale: [0.17, 0.11, 0.07],
+    position: [-0.43, 0.82, 0.22],
+    scale: [0.28, 0.2, 0.16],
     rotation: [0.15, -0.5, 0.4],
   },
   {
     name: 'Left auricle',
-    position: [0.4, 0.93, 0.12],
-    scale: [0.15, 0.1, 0.065],
+    position: [0.43, 0.84, 0.18],
+    scale: [0.25, 0.16, 0.14],
     rotation: [0.1, 0.45, -0.35],
   },
 ]
@@ -528,7 +553,7 @@ export const CARDIAC_VEINS: readonly CardiacVein[] = [
     radius: 0.02,
     color: VEIN_COLOR,
     points: ROUTE_SAMPLES.LAD.map(
-      ([y, phi]) => surfacePoint(y, ((phi - 9) * Math.PI) / 180, 1.09),
+      ([y, phi]) => surfacePoint(y, ((phi - 9) * Math.PI) / 180, 1.035),
     ),
   },
   {
@@ -543,6 +568,6 @@ export const CARDIAC_VEINS: readonly CardiacVein[] = [
         [0.26, -145],
         [0.3, -170],
       ] as const
-    ).map(([y, phi]) => surfacePoint(y, (phi * Math.PI) / 180, 1.09)),
+    ).map(([y, phi]) => surfacePoint(y, (phi * Math.PI) / 180, 1.035)),
   },
 ]

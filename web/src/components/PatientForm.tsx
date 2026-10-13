@@ -1,162 +1,80 @@
-/**
- * Data-driven patient input form — all 54 model inputs, grouped the way
- * requirement 1c groups them (demographic / clinical examination / ECG /
- * laboratory / echocardiographic).
- *
- * Fully controlled by the zustand store: no local component state, so the
- * desktop column and the stacked mobile instance below always agree, and the
- * 3D scene never re-renders because a keystroke landed (the scene subscribes
- * to prediction + selection only).
- *
- * "Run prediction" posts the collected values through getPrediction(); while
- * USE_MOCK is true that returns canned numbers, which RiskStrip labels as
- * demo data rather than model output.
- */
-
+import { useState } from 'react'
 import { FEATURES, FEATURE_GROUPS, collectInputs, defaultInputs } from '../api/features'
 import type { FeatureDef, InputValue } from '../api/features'
 import { getPrediction } from '../api/client'
 import { usePatientStore } from '../store/patientStore'
+import { Icon } from './Icon'
 
-const inputClass =
-  'mt-1 w-full rounded-md border border-mist bg-well px-2 py-1 text-xs text-navy transition focus:border-accent focus:outline-none'
-
-interface PatientFormProps {
-  /** Extra classes for column placement; the form fills its container. */
-  className?: string
-}
-
-export function PatientForm({ className = '' }: PatientFormProps) {
-  const inputs = usePatientStore((s) => s.inputs)
-  const status = usePatientStore((s) => s.status)
-  const setInputs = usePatientStore((s) => s.setInputs)
-  const setStatus = usePatientStore((s) => s.setStatus)
-  const setPrediction = usePatientStore((s) => s.setPrediction)
-
+export function PatientForm() {
+  const inputs = usePatientStore(s => s.inputs)
+  const status = usePatientStore(s => s.status)
+  const setInputs = usePatientStore(s => s.setInputs)
+  const setStatus = usePatientStore(s => s.setStatus)
+  const setPrediction = usePatientStore(s => s.setPrediction)
+  const [validationError, setValidationError] = useState<string | null>(null)
   const busy = status === 'loading'
 
-  const update = (name: string, value: number | string) =>
-    setInputs({ [name]: value })
-
   const run = () => {
+    for (const feature of FEATURES) {
+      const raw = inputs[feature.name] ?? feature.default
+      if (feature.kind === 'number' && (raw === '' || !Number.isFinite(Number(raw)) || Number(raw) < feature.min || Number(raw) > feature.max)) {
+        setValidationError(`${feature.label}: enter a value from ${feature.min} to ${feature.max}.`)
+        const field = document.getElementById(`f-${feature.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`)
+        field?.closest('details')?.setAttribute('open', '')
+        field?.focus()
+        return
+      }
+      if (feature.kind === 'number') {
+        const steps = (Number(raw) - feature.min) / feature.step
+        if (Math.abs(steps - Math.round(steps)) > 0.00001) {
+          setValidationError(`${feature.label}: use increments of ${feature.step}.`)
+          const field = document.getElementById(`f-${feature.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`)
+          field?.closest('details')?.setAttribute('open', '')
+          field?.focus()
+          return
+        }
+      }
+    }
+    setValidationError(null)
     setStatus('loading')
     getPrediction(collectInputs(inputs))
-      .then((prediction) => setPrediction(prediction))
-      .catch((error: unknown) =>
-        setStatus(
-          'error',
-          error instanceof Error ? error.message : 'prediction failed',
-        ),
-      )
+      .then(result => setPrediction(result))
+      .catch((error: unknown) => setStatus('error', error instanceof Error ? error.message : 'Prediction failed'))
   }
 
   return (
-    <section
-      aria-label="Patient inputs"
-      className={`min-h-0 flex-col rounded-xl border border-mist bg-panel ${className}`}
-    >
-      <header className="border-b border-mist px-4 py-3">
-        <div className="flex items-baseline justify-between gap-2">
-          <h2 className="text-sm font-semibold text-navy">Patient inputs</h2>
-          <span className="text-[10px] text-slate">{FEATURES.length} features</span>
-        </div>
-        <p className="mt-1 text-[10px] leading-relaxed text-slate">
-          Demographic, examination, ECG, laboratory and echocardiographic
-          values — the same columns the models were trained on.
-        </p>
-      </header>
-
-      <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-3">
-        {FEATURE_GROUPS.map((group, index) => (
-          <details key={group} open={index === 0}>
-            <summary className="cursor-pointer rounded-md px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate transition hover:bg-mist hover:text-navy">
-              {group}
-            </summary>
-            <div className="mb-2 mt-1 grid grid-cols-2 gap-2 rounded-lg bg-mist/60 p-2">
-              {FEATURES.filter((f) => f.group === group).map((feature) => (
-                <Field
-                  key={feature.name}
-                  feature={feature}
-                  value={inputs[feature.name] ?? feature.default}
-                  onChange={(value) => update(feature.name, value)}
-                />
-              ))}
-            </div>
+    <section aria-label="Patient inputs" className="patient-panel panel">
+      <header className="panel-heading"><div className="section-title"><Icon name="person" size={17} /><h2>Patient profile</h2></div><span className="count-badge">54 inputs</span></header>
+      <div className="patient-summary"><span className="patient-avatar"><Icon name="person" size={22} /></span><div><strong>Clinical assessment</strong><span>{String(inputs.Age ?? 59)} years <i /> {String(inputs.Sex ?? 'Male')}</span></div><span className="profile-dot" /></div>
+      <div className="form-intro"><span className="eyebrow">CLINICAL PARAMETERS</span><p>Start with the patient’s details.<br />Expand a section to refine the profile.</p></div>
+      <div className="patient-fields" aria-busy={busy}>
+        {FEATURE_GROUPS.map((group, index) => {
+          const features = FEATURES.filter(f => f.group === group)
+          return <details key={group} open={index === 0} className="feature-group">
+            <summary><span className="group-number">{String(index + 1).padStart(2, '0')}</span><span>{group}</span><span className="group-count">{features.length}</span><Icon name="down" size={13} /></summary>
+            <div className="field-grid"><fieldset disabled={busy}>
+              {features.map(feature => <Field key={feature.name} feature={feature} value={inputs[feature.name] ?? feature.default} onChange={value => setInputs({ [feature.name]: value })} />)}
+            </fieldset></div>
           </details>
-        ))}
+        })}
       </div>
-
-      <footer className="space-y-2 border-t border-mist px-4 py-3">
-        <button
-          type="button"
-          onClick={run}
-          disabled={busy}
-          className="w-full rounded-md bg-accent px-3 py-2 text-xs font-semibold text-[#051020] transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
-        >
-          {busy ? 'Running prediction…' : 'Run prediction'}
-        </button>
-        <button
-          type="button"
-          onClick={() => setInputs(defaultInputs())}
-          disabled={busy}
-          className="w-full rounded-md border border-mist px-3 py-1.5 text-[11px] text-slate transition hover:border-accent/60 hover:text-accent disabled:opacity-60"
-        >
-          Reset to population defaults
-        </button>
+      <footer className="patient-actions">
+        {validationError && <p role="alert" className="form-error">{validationError}</p>}
+        <p className="default-note"><Icon name="info" size={13} /> Cohort defaults, not a healthy profile</p>
+        <button type="button" onClick={run} disabled={busy} className="button button-primary run-button"><Icon name={busy ? 'rotate' : 'spark'} size={17} className={busy ? 'spin' : ''} />{busy ? 'Analyzing profile…' : 'Run assessment'}<Icon name="arrow" size={17} /></button>
+        <button type="button" disabled={busy} className="reset-inputs" onClick={() => { setInputs(defaultInputs()); setValidationError(null) }}><Icon name="reset" size={13} /> Reset to defaults</button>
       </footer>
     </section>
   )
 }
 
-interface FieldProps {
-  feature: FeatureDef
-  value: InputValue
-  onChange: (value: number | string) => void
-}
-
-function Field({ feature, value, onChange }: FieldProps) {
+function Field({ feature, value, onChange }: { feature: FeatureDef; value: InputValue; onChange: (value: number | string) => void }) {
   const id = `f-${feature.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`
-
-  if (feature.kind === 'category') {
-    return (
-      <div className="min-w-0">
-        <label htmlFor={id} className="block truncate text-[10px] text-slate">
-          {feature.label}
-        </label>
-        <select
-          id={id}
-          className={inputClass}
-          value={String(value)}
-          onChange={(event) => onChange(event.target.value)}
-        >
-          {feature.options.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </div>
-    )
-  }
-
-  return (
-    <div className="min-w-0">
-      <label htmlFor={id} className="block truncate text-[10px] text-slate">
-        {feature.label}
-        {feature.unit ? ` (${feature.unit})` : ''}
-      </label>
-      <input
-        id={id}
-        type="number"
-        min={feature.min}
-        max={feature.max}
-        step={feature.step}
-        value={value === '' ? '' : Number(value)}
-        onChange={(event) =>
-          onChange(event.target.value === '' ? '' : Number(event.target.value))
-        }
-        className={inputClass}
-      />
-    </div>
-  )
+  const binary = feature.kind === 'number' && feature.min === 0 && feature.max === 1
+  return <div className={`form-field ${binary ? 'binary-field' : ''}`}>
+    <label htmlFor={id}>{feature.label}</label>
+    {feature.kind === 'category' ? <select id={id} value={String(value)} onChange={event => onChange(event.target.value)}>
+      {feature.options.map(option => <option key={option} value={option}>{option === 'N' ? 'No' : option === 'Y' ? 'Yes' : option}</option>)}
+    </select> : binary ? <select id={id} value={String(value)} onChange={event => onChange(Number(event.target.value))}><option value="0">No</option><option value="1">Yes</option></select> : <div className="number-input"><input id={id} type="number" min={feature.min} max={feature.max} step={feature.step} value={value === '' ? '' : Number(value)} onChange={event => onChange(event.target.value === '' ? '' : Number(event.target.value))} />{feature.unit && <span>{feature.unit}</span>}</div>}
+  </div>
 }

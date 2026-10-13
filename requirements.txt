@@ -8,9 +8,10 @@
 # The venv lives at the repo root and serves BOTH ml/ and api/.
 # Tested with Python 3.13.14.
 
+-c constraints.txt
 -r ml/requirements.txt
 -r api/requirements.txt
 
 # --- tests (used from Day 1) ---
-pytest>=8.3
-httpx>=0.28        # FastAPI TestClient
+pytest==9.1.1
+httpx==0.28.1        # FastAPI TestClient

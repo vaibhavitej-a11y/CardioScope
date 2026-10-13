@@ -1,0 +1,7 @@
+# Never normalize line endings or treat generated/binary artifacts as text.
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.joblib binary
+*.xlsx binary

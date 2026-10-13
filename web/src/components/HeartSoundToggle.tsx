@@ -69,7 +69,7 @@ export function HeartSoundToggle() {
       onClick={() => setEnabled((value) => !value)}
       aria-pressed={enabled}
       aria-label={enabled ? 'Mute the heartbeat' : 'Play the heartbeat'}
-      className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-mist bg-panel/95 px-3 py-1.5 text-[11px] font-medium text-slate shadow-md shadow-black/40 backdrop-blur transition hover:border-accent/60 hover:text-accent"
+      className="heartbeat-toggle"
     >
       <svg viewBox="0 0 20 20" className="size-3.5" aria-hidden="true">
         <path
@@ -94,7 +94,7 @@ export function HeartSoundToggle() {
           />
         )}
       </svg>
-      {enabled ? 'Heartbeat on' : 'Heartbeat off'}
+      {enabled ? 'Sound on' : 'Sound off'}
     </button>
   )
 }

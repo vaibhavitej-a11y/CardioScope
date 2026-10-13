@@ -68,3 +68,14 @@ def test_frontend_disclaimer_matches_api():
     match = re.search(r"DISCLAIMER_TEXT\s*=\s*'([^']+)'", ts)
     assert match, "DISCLAIMER_TEXT not found in DisclaimerBanner.tsx"
     assert match.group(1) == DISCLAIMER_TEXT
+
+
+def test_model_runtime_pins_match_saved_manifest():
+    """Dependency upgrades must not silently drift from serialized model versions."""
+    manifest = json.loads((ART / "manifest.json").read_text(encoding="utf-8"))
+    files = [REPO / "constraints.txt", REPO / "api" / "requirements.txt", REPO / "ml" / "requirements.txt"]
+    for path in files:
+        source = path.read_text(encoding="utf-8")
+        for package, version in manifest["versions"].items():
+            pattern = rf"^{re.escape(package)}=={re.escape(version)}(?:\s|$)"
+            assert re.search(pattern, source, re.MULTILINE), f"{path.name}: pin {package}=={version}"

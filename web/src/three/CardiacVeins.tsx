@@ -15,7 +15,7 @@ import * as THREE from 'three'
 import { CARDIAC_VEINS } from '../vessels'
 import { injectFlow } from './flow'
 
-export function CardiacVeins() {
+export function CardiacVeins({ animate = true }: { animate?: boolean }) {
   const uFlow = useRef({ value: 0 })
 
   const items = useMemo(
@@ -38,7 +38,7 @@ export function CardiacVeins() {
   )
 
   useFrame((state) => {
-    uFlow.current.value = state.clock.elapsedTime
+    uFlow.current.value = animate ? state.clock.elapsedTime : 0
   })
 
   return (
@@ -53,13 +53,13 @@ export function CardiacVeins() {
             clearcoatRoughness={0.25}
             envMapIntensity={1.2}
             emissive={vein.color}
-            emissiveIntensity={0.45}
+            emissiveIntensity={0.08}
             onBeforeCompile={(shader) =>
               injectFlow(shader, uFlow.current, {
                 repeat: 2,
                 speed: 0.3,
                 tint: [0.7, 0.88, 1],
-                strength: 0.6,
+                strength: animate ? 0.12 : 0,
               })
             }
           />

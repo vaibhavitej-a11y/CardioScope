@@ -22,6 +22,9 @@ export interface PatientState {
   inputs: Record<string, FeatureValue>
   /** Latest prediction, or null before the first successful call. */
   prediction: Prediction | null
+  /** Measurements used for the displayed prediction, preserved while editing. */
+  predictionInputs: Record<string, FeatureValue>
+  predictionSource: 'model' | 'demo'
   status: RequestStatus
   error: string | null
   /** Vessel currently inspected in the 3D scene / detail panel. */
@@ -30,7 +33,7 @@ export interface PatientState {
   disclaimerDismissed: boolean
 
   setInputs: (patch: Partial<Record<string, FeatureValue>>) => void
-  setPrediction: (prediction: Prediction | null) => void
+  setPrediction: (prediction: Prediction | null, source?: 'model' | 'demo') => void
   setStatus: (status: RequestStatus, error?: string | null) => void
   selectVessel: (vessel: VesselId | null) => void
   dismissDisclaimer: () => void
@@ -40,6 +43,8 @@ export interface PatientState {
 export const usePatientStore = create<PatientState>()((set) => ({
   inputs: {},
   prediction: null,
+  predictionInputs: {},
+  predictionSource: 'model',
   status: 'idle',
   error: null,
   selectedVessel: null,
@@ -57,8 +62,8 @@ export const usePatientStore = create<PatientState>()((set) => ({
       return { inputs }
     }),
 
-  setPrediction: (prediction) =>
-    set({ prediction, status: prediction ? 'ready' : 'idle', error: null }),
+  setPrediction: (prediction, predictionSource = 'model') =>
+    set(state => ({ prediction, predictionSource, predictionInputs: prediction ? { ...state.inputs } : {}, status: prediction ? 'ready' : 'idle', error: null })),
 
   setStatus: (status, error = null) => set({ status, error }),
 
@@ -70,6 +75,8 @@ export const usePatientStore = create<PatientState>()((set) => ({
     set({
       inputs: {},
       prediction: null,
+      predictionInputs: {},
+      predictionSource: 'model',
       status: 'idle',
       error: null,
       selectedVessel: null,

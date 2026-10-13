@@ -38,6 +38,7 @@ export function Heart() {
     )
     const mesh = new THREE.LatheGeometry(profile, 96)
     const position = mesh.attributes.position
+    const colors = new Float32Array(position.count * 3)
     for (let i = 0; i < position.count; i++) {
       const x = position.getX(i)
       const y = position.getY(i)
@@ -50,14 +51,17 @@ export function Heart() {
       // analytic surface, lift 1.06) keep their seating.
       const lobes =
         1 +
-        0.02 * Math.sin(wx * 6.1 + wy * 4.3) * Math.cos(wz * 5.7 - wy * 3.9)
+        0.013 * Math.sin(wx * 6.1 + wy * 4.3) * Math.cos(wz * 5.7 - wy * 3.9)
       const grain =
-        0.007 *
+        0.003 *
         Math.sin(wx * 17.3 + wy * 11.7) *
         Math.cos(wz * 15.9 - wx * 8.2)
       position.setXYZ(i, wx * (lobes + grain), wy, wz * (lobes + grain))
+      const variation = 0.91 + 0.09 * Math.sin(wx * 5 + wy * 3) * Math.cos(wz * 4 - wy * 2)
+      colors.set([1, variation, variation * 0.98], i * 3)
     }
     position.needsUpdate = true
+    mesh.setAttribute('color', new THREE.BufferAttribute(colors, 3))
     mesh.computeVertexNormals()
     return mesh
   }, [])
@@ -76,7 +80,7 @@ export function Heart() {
 
   return (
     <group>
-      <mesh geometry={geometry} material={muscle} />
+      <mesh geometry={geometry} material={muscle} onPointerOver={event => event.stopPropagation()} />
       <CoronarySulcus material={sulcusMaterial} />
       <Auricles material={muscle} />
       <GreatVessels />
@@ -113,6 +117,23 @@ function CoronarySulcus({ material }: { material: THREE.Material }) {
  * of the organ rather than as attachments.
  */
 function Auricles({ material }: { material: THREE.Material }) {
+  const geometry = useMemo(() => {
+    const mesh = new THREE.SphereGeometry(1, 32, 24)
+    const positions = mesh.attributes.position
+    const colors = new Float32Array(positions.count * 3)
+    for (let i = 0; i < positions.count; i++) {
+      const x = positions.getX(i)
+      const y = positions.getY(i)
+      const z = positions.getZ(i)
+      const fold = 1 + 0.065 * Math.sin(x * 11 + y * 5) * Math.sin(z * 8)
+      positions.setXYZ(i, x * fold, y * fold, z * fold)
+      colors.set([0.9, 0.82, 0.8], i * 3)
+    }
+    mesh.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+    mesh.computeVertexNormals()
+    return mesh
+  }, [])
+  useEffect(() => () => geometry.dispose(), [geometry])
   return (
     <group>
       {AURICLES.map((auricle) => (
@@ -122,8 +143,8 @@ function Auricles({ material }: { material: THREE.Material }) {
           rotation={auricle.rotation as [number, number, number]}
           scale={auricle.scale as [number, number, number]}
           material={material}
+          geometry={geometry}
         >
-          <sphereGeometry args={[1, 28, 20]} />
         </mesh>
       ))}
     </group>
@@ -140,7 +161,7 @@ function GreatVessels() {
           'catmullrom',
           0.5,
         )
-        return new THREE.TubeGeometry(curve, 48, radius, 10, false)
+        return new THREE.TubeGeometry(curve, 64, radius, 24, false)
       }),
     [],
   )
@@ -163,24 +184,25 @@ function GreatVessels() {
       {GREAT_VESSELS.map((vessel, i) => (
         <group key={vessel.name}>
           <mesh geometry={geometries[i]} material={materials[i]} />
-          {/*
-            Rounded stumps. TubeGeometry leaves both ends open, so a vessel
-            that is not buried in the muscle shows a hollow mouth — the
-            inferior vena cava read as a cut straw until these were added.
-          */}
-          {[vessel.points[0], vessel.points[vessel.points.length - 1]].map(
-            (point, index) => (
-              <mesh
-                key={`${vessel.name}-${index}`}
-                position={point as [number, number, number]}
-                material={materials[i]}
-              >
-                <sphereGeometry args={[vessel.radius, 16, 12]} />
-              </mesh>
-            ),
-          )}
+          <VesselOpening points={vessel.points} radius={vessel.radius} material={materials[i]} />
         </group>
       ))}
     </group>
   )
+}
+
+/** A vessel wall and recessed lumen give the cut ends depth instead of round caps. */
+function VesselOpening({ points, radius, material }: {
+  points: readonly (readonly [number, number, number])[]
+  radius: number
+  material: THREE.Material
+}) {
+  const position = new THREE.Vector3(...points[points.length - 1])
+  const tangent = position.clone().sub(new THREE.Vector3(...points[points.length - 2])).normalize()
+  const orientation = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), tangent)
+  return <group position={position} quaternion={orientation}>
+    <mesh material={material}><ringGeometry args={[radius * 0.72, radius, 24]} /></mesh>
+    <mesh position={[0, 0, -radius * 0.28]}><circleGeometry args={[radius * 0.76, 24]} /><meshStandardMaterial color="#302324" roughness={1} side={THREE.DoubleSide} /></mesh>
+    <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, -radius * 0.14]}><cylinderGeometry args={[radius * 0.72, radius * 0.72, radius * 0.28, 24, 1, true]} /><meshStandardMaterial color="#684542" roughness={0.9} side={THREE.DoubleSide} /></mesh>
+  </group>
 }

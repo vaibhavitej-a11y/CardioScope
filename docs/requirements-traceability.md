@@ -24,9 +24,9 @@ Nothing may be marked done until the linked gate is green.
 |---|---|---|---|---|
 | 1a | Train classification models to predict overall **CAD** status | `ml/src/train.py` | M1 | ✅ done + gate green |
 | 1b | Predict stenosis status for **LAD, LCX, RCA** | `ml/src/train.py` | M1 | ✅ done + gate green |
-| 1c | Use demographic, clinical examination, ECG, laboratory and echocardiographic features | `ml/src/clean.py` | M1 | ✅ done + gate green |
+| 1c | Use demographic, clinical examination, ECG, laboratory and echocardiographic features | `ml/src/data.py` | M1 | ✅ done + gate green |
 | 1d | **Exclude `LAD`, `LCX`, `RCA`, `Cath` from model input features** to prevent target leakage | `ml/tests/test_leakage.py` + `api/tests/test_validation.py` | M1 + M2 | ✅ done + gate green |
-| 1e | Evaluate with accuracy, precision, recall, F1-score, ROC-AUC | `ml/src/evaluate.py` | M1 | ✅ done + gate green |
+| 1e | Evaluate with accuracy, precision, recall, F1-score, ROC-AUC | `ml/src/train.py` | M1 | ✅ done + gate green |
 
 > **1d is the one judges are told to ask about.** UCI's own dataset note says
 > the same thing: *"only one of the LAD, LCX, RCA or Cath must be in dataset
@@ -99,7 +99,7 @@ Nothing may be marked done until the linked gate is green.
 | # | Requirement | Owner | Status |
 |---|---|---|---|
 | S-1 | **Project description** on the Devpost project page (what we built, problem, how it works) | M4 | ⬜ |
-| S-2 | **Public GitHub repo** with source + docs; README must have setup instructions, prerequisites/dependencies, run instructions | all · README M4 | ⬜ repo exists, README stub |
+| S-2 | **Public GitHub repo** with source + docs; README must have setup instructions, prerequisites/dependencies, run instructions | all · README M4 | README complete; verify repository visibility at submission |
 | S-3 | **Demo video 3–10 min on YouTube** — unlisted OK, **private NOT OK**; must show it running and explain the approach; **English audio or English subtitles** | M4 | ⬜ |
 | S-4 | **Team info, real full names**; every member has a Devpost account **and is added to the submission** | all 4 members | ⬜ **team action** |
 
