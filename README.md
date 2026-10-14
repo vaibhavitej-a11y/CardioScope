@@ -1,6 +1,13 @@
 # CardioScope
+<p align="center">
+  <strong>Explore heart disease risk visually, with an interactive 3D heart and explanations behind each model prediction.</strong>
+</p>
 
-**Explore cardiovascular risk through interactive 3D anatomy and explainable machine learning.**
+<p align="center">
+  <a href="https://cardioscope-31m4.onrender.com/">Live Demo</a> ·
+  <a href="docs/submission/index.pdf">Technical Report</a> ·
+  <a href="docs/submission/devpost-description.md">Devpost Description</a>
+</p>
 
 CardioScope is a research web application built for Track A of the Multimodal AI
 Hackathon 2026. Enter a patient's clinical measurements to estimate overall
