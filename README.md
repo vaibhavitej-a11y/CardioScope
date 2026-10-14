@@ -348,3 +348,6 @@ To regenerate the PDF after editing its Markdown source:
 Publishing the repository, uploading the demo video, and entering team details
 on Devpost are separate submission steps. The checklist records those items
 without treating them as completed.
+
+## Documentation
+For setup, troubleshooting, model evaluation, and deployment instructions, refer to the sections above.
