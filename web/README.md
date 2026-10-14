@@ -61,6 +61,31 @@ Keep the API running during development **and** preview. Both modes forward
 site needs an equivalent route to its Python API; static hosting alone cannot
 run the models. No environment variables or API keys are needed locally.
 
+## Frontend deployment
+
+Use the [full-stack Docker/Render deployment](../deploy/README.md) for the working
+prototype with real model predictions. FastAPI serves this frontend and the API
+from one origin. The static-only option below is optional.
+
+The Sites deployment uses `.openai/hosting.json` at the repository root and serves
+the root `dist/`. Build with `npm --prefix web ci` and
+`npm --prefix web run build:deploy`.
+The frontend can also be hosted by any static host using `web` as the project
+directory, `npm run build` as the build command, and `dist` as the output.
+
+Static hosting does not run the Python models. Without a hosted API, visitors
+can choose **Explore a sample assessment** after the connection attempt fails.
+Sample scores are canned and do not change based on edited inputs.
+
+To enable real predictions, set `VITE_API_BASE_URL` to the HTTPS origin of your
+deployed FastAPI service before building (see `.env.example`). The service must
+allow the frontend origin with CORS, or use a same-origin `/api` reverse proxy
+and leave this setting empty. Requests time out after 30 seconds. Never set a
+public deployment to a localhost API address or put secrets in Vite variables.
+
+GitHub Actions runs frontend lint, tests, and the production build on pushes and
+pull requests. Run the Python checks in the root README before pushing too.
+
 ## Source map
 
 | Location | Responsibility |

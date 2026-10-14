@@ -302,6 +302,27 @@ scikit-learn, and SHAP**. See [web/README.md](web/README.md) for frontend detail
 
 ## Before pushing changes
 
+### Deploy the frontend
+
+For a hosted prototype with **real predictions**, use the
+[full-stack deployment](deploy/README.md). The root Dockerfile builds React and
+serves it from FastAPI alongside all four trained models. `render.yaml` provides
+a single-service hosting configuration; `deploy/verify.py` checks actual
+input-dependent predictions and SHAP over HTTP. This is the primary deployment
+path. See the [requirement audit](docs/requirements-audit.md) for verified and
+outstanding challenge deliverables.
+
+The repository includes a Sites hosting manifest at `.openai/hosting.json`
+that serves the root `dist/`. Run `npm --prefix web run build:deploy` before
+packaging a deployment. See [frontend deployment](web/README.md#frontend-deployment)
+for other static hosts and the optional `VITE_API_BASE_URL` setting.
+
+A frontend-only deployment provides the 3D workspace and an explicitly selected
+sample assessment. Real predictions require a separately hosted Python API;
+the local development proxy is not included in the static build.
+
+### Push checks
+
 Run the build, lint, and Python tests above, then inspect `git status --short`
 and `git diff --check`. Commit source, documentation, the npm lockfile, model
 artifacts, and the attributed public workbook. Local dependencies, virtualenvs,

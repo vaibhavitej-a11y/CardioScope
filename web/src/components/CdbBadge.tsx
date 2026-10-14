@@ -1,7 +1,7 @@
 import { riskBand, riskColor, riskLabel } from '../vessels'
 import { probabilityPercent } from '../api/format'
 
-export function CdbBadge({ value }: { value: number | null }) {
+export function CdbBadge({ value, classification }: { value: number | null; classification?: string }) {
   const color = value === null ? '#657168' : riskColor(value)
   const label = value === null ? 'Awaiting prediction' : riskLabel(riskBand(value), 'cad')
   const circumference = Math.PI * 72
@@ -12,5 +12,6 @@ export function CdbBadge({ value }: { value: number | null }) {
       <span className="ring-start">0</span><span className="ring-end">100</span>
     </div>
     <span className="risk-band-badge" style={{ color, background: `${color}16`, borderColor: `${color}30` }}><i style={{ background: color }} />{label}</span>
+    {classification && <p className="risk-footnote">Model classification: <strong>{classification}</strong><br />At the trained operating threshold; not a diagnosis.</p>}
   </div>
 }

@@ -1,0 +1,12 @@
+# Runtime for the four shipped CatBoost bundles; training candidates are omitted.
+# Use root requirements.txt for training and tests.
+-c ../constraints.txt
+fastapi==0.139.2
+uvicorn==0.51.0
+pydantic==2.13.4
+joblib==1.5.3
+numpy==2.5.1
+pandas==2.3.3
+scikit-learn==1.9.0
+catboost==1.2.10
+shap==0.52.0

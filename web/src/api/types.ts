@@ -17,6 +17,6 @@ export interface Prediction {
 export interface ShapBreakdown {
   /** Signed contribution per feature, largest absolute first. */
   contributions: { feature: string; value: number }[]
-  /** Model confidence display label, e.g. "High likelihood". */
+  /** Trained model classification at its stored threshold, e.g. "CAD" or "Normal". */
   label: string
 }

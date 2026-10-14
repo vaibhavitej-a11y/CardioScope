@@ -16,7 +16,7 @@ measurements used in each assessment.
 Users can rotate, zoom, switch camera views, select vessels, toggle labels,
 expand the viewer, and export an assessment through the browser's print dialog.
 A camera-following anatomical compass keeps directions consistent during
-rotation. Overall CAD uses likelihood labels, while vessel cards describe
+rotation. Overall CAD shows the model classification and likelihood band, while vessel cards describe
 predicted stenosis. Probabilities retain decimal precision rather than rounding
 near-one outputs to an apparent 100% certainty.
 

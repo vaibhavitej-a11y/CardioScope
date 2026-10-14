@@ -13,6 +13,10 @@
 - [x] Root and frontend READMEs explain setup, API startup, preview, and limitations.
 - [x] Technical report source and a PDF of at most six pages included.
 - [x] Devpost description matches the recorded model metrics and implementation.
+- [x] Full-stack Docker/Render configuration serves frontend and real API together.
+- [x] Local full-stack HTTP check verifies changed predictions and SHAP for changed inputs.
+- [ ] Verify the container build and cloud deployment; record the actual working URL.
+- [ ] Check rotation, zoom, vessel selection and form updates in a modern browser without a dedicated GPU.
 
 ## Checks before the final commit
 

@@ -8,11 +8,14 @@ browser never talks cross-origin during development.
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import os
+from pathlib import Path
 
 from fastapi import FastAPI
 
 from app.routes.predict import router
 from app.service import ModelService
+from app.hosting import mount_frontend
 
 
 @asynccontextmanager
@@ -34,3 +37,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.include_router(router)
+
+frontend_path = os.environ.get("CARDIOSCOPE_FRONTEND_DIR")
+mount_frontend(
+    app,
+    Path(frontend_path) if frontend_path else Path(__file__).resolve().parents[2] / "web" / "dist",
+    required=frontend_path is not None,
+)

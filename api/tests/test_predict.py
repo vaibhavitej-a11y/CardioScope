@@ -44,3 +44,17 @@ def test_config_serves_disclaimer(client, schema):
 
     body = client.get("/api/config").json()
     assert body["disclaimer"] == DISCLAIMER_TEXT
+
+
+def test_changed_profile_changes_real_predictions_and_explanations(client, sample_payload):
+    lower = {**sample_payload, "Age": 30, "Typical Chest Pain": 0, "HTN": 0, "DM": 0, "EF-TTE": 65}
+    higher = {**sample_payload, "Age": 75, "Typical Chest Pain": 1, "HTN": 1, "DM": 1, "EF-TTE": 35}
+    first = client.post("/api/predict", json=lower)
+    second = client.post("/api/predict", json=higher)
+    assert first.status_code == second.status_code == 200
+    a, b = first.json(), second.json()
+    assert a["cad"] != b["cad"]
+    assert a["vessels"] != b["vessels"]
+    assert a["shap"]["cad"]["contributions"] != b["shap"]["cad"]["contributions"]
+    assert a["shap"]["cad"]["label"] in {"CAD", "Normal"}
+    assert b["shap"]["cad"]["label"] in {"CAD", "Normal"}

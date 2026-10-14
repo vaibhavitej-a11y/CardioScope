@@ -5,8 +5,7 @@
  * vite.config.ts), so no CORS setup is needed during development. Port 8000
  * is occupied by another local project on the dev machine.
  *
- * Contract-first workflow: USE_MOCK is the one switch — flip it back to true
- * for an offline demo (canned worked example, identical response shape).
+ * Hosted builds may set VITE_API_BASE_URL to the prediction service origin.
  */
 
 import { mockPrediction } from './mock'
@@ -32,6 +31,7 @@ export class ApiError extends Error {
 }
 
 const MOCK_LATENCY_MS = 220
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').trim().replace(/\/+$/, '')
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -47,13 +47,14 @@ export async function getPrediction(
 
   let response: Response
   try {
-    response = await fetch('/api/predict', {
+    response = await fetch(`${API_BASE_URL}/api/predict`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
+      signal: AbortSignal.timeout(30_000),
     })
   } catch {
-    throw new ApiError('prediction service unreachable')
+    throw new ApiError('Prediction service unavailable or timed out. Try again or explore a sample assessment.')
   }
 
   if (!response.ok) {

@@ -1,0 +1,13 @@
+# One service serves the compiled frontend AND real ML predictions.
+# No database, frontend API URL, CORS, or external inference key is needed.
+services:
+  - type: web
+    name: cardioscope
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: '8001'

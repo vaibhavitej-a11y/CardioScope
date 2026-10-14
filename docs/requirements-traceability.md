@@ -1,5 +1,9 @@
 # Requirements Traceability — Track A
 
+For the current evidence-based status, see [14 October audit](requirements-audit.md).
+The completion labels below describe the implemented local prototype; they do
+not establish cloud deployment, browser performance, or final submission.
+
 **Source:** `Downloads\Track A.pdf` (Multimodal AI Hackathon 2026) +
 `Downloads\Problem Statements.pdf` + `docs/reference/submission-guidelines.pdf`
 **Compiled:** 5 Oct 2026 · **Deadline:** 15 Oct 2026

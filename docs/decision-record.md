@@ -130,11 +130,15 @@ into compile time.
 
 ## D8 — Deployment
 
-**Status:** ✅ **DECIDED — local only**
+**Status:** superseded on 14 October by the user's full-stack deployment request.
 
-`uvicorn` + `vite`. Docker and hosted URLs are COULD tier and are **cut**
-unless everything else is finished. Devpost only requires a public repo, a
-description and a video — not a live URL.
+The prototype still runs locally with `uvicorn` + `vite`. A single-service
+Docker deployment now builds the frontend and serves it from FastAPI alongside
+the four trained models; `render.yaml` provides the host configuration. This
+replaces a static-only deployment as the intended working prototype URL. Cloud
+publication remains pending account connectivity and successful container checks.
+See `deploy/README.md` and `requirements-audit.md`. The challenge's submission
+rules require a public repo and demonstration video, not a live URL.
 
 ---
 

@@ -23,7 +23,7 @@ export function RiskStrip() {
     <header className="panel-heading"><div className="section-title"><Icon name="chart" size={17} /><h2>Risk assessment</h2></div><span className={`result-status ${status === 'loading' ? 'is-loading' : ''}`}>{status === 'loading' ? 'Analyzing' : stale ? 'Inputs changed' : status === 'ready' ? 'Updated' : 'Offline'}</span></header>
     {(USE_MOCK || source === 'demo') && <div className="data-notice demo-notice">Illustrative sample · not a model prediction</div>}
     {stale && <p className="data-notice">Profile changed. Run assessment to update results.</p>}
-    <CdbBadge value={prediction?.cad ?? null} />
+    <CdbBadge value={prediction?.cad ?? null} classification={!USE_MOCK && source === 'model' ? prediction?.shap.cad.label : undefined} />
     <div className="vessel-heading"><span className="eyebrow">CORONARY VESSELS</span><span>Stenosis probability</span></div>
     <div className="vessel-cards">{VESSELS.map(vessel => <GaugeCard key={vessel} title={vessel} subtitle={VESSEL_META[vessel].name} value={prediction?.vessels[vessel] ?? null} active={selectedVessel === vessel} onClick={() => selectVessel(selectedVessel === vessel ? null : vessel)} />)}</div>
     {status === 'error' && <div className="offline-state"><div role="alert" className="connection-error"><Icon name="info" size={15} /><span>Prediction service unavailable. Start the API and run assessment again.<span className="error-detail">{error}</span></span></div><button type="button" className="sample-button" onClick={() => { setInputs(defaultInputs()); setPrediction(mockPrediction, 'demo') }}>Explore a sample assessment <Icon name="arrow" size={12} /></button></div>}

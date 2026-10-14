@@ -6,7 +6,7 @@ Source: https://github.com/vaibhavitej-a11y/CardioScope
 
 ## 1. Product overview and architecture
 
-CardioScope is a local research prototype that estimates coronary artery disease
+CardioScope is a research prototype that estimates coronary artery disease
 (CAD) and vessel-specific stenosis probabilities from 54 clinical features.
 An interactive 3D heart connects those estimates to anatomical context, while
 SHAP explanations show the factors behind each model output.
@@ -182,7 +182,9 @@ review the changed artifacts, rerun tests, and restart the API.
 
 Production-build review uses npm.cmd --prefix web run build followed by
 npm.cmd --prefix web run preview. Keep the API running; preview also proxies
-/api to port 8001. A public deployment would need an equivalent backend route.
+/api to port 8001. The root Dockerfile builds React and serves it from FastAPI
+alongside the real models on one origin. render.yaml configures hosting;
+deploy/verify.py checks assets and input-dependent inference over HTTP.
 
 ## 6. Verification, safety, and limitations
 
@@ -190,8 +192,9 @@ The repository includes Python checks covering API responses, input
 boundaries, feature schema/disclaimer parity, leakage, trained bundles, and
 SHAP units, and dependency pins against the saved model manifest. Frontend regression tests cover probability precision, rounding
 boundaries, and separate CAD/vessel labels. Type checking and linting are part
-of the submission checks. Live-browser checks exercise the real API, vessel
-selection, and explanation updates.
+of the submission checks. HTTP checks verify the compiled frontend and real
+input-dependent predictions. Browser interaction and integrated-GPU performance
+remain final manual checks.
 
 ```powershell
 npm.cmd --prefix web test
